@@ -51,6 +51,14 @@
         </a>
     </li>
 
+    <!-- Nav Item - Manajemen Kendaraan -->
+    <li class="nav-item {{ request()->routeIs('admin.vehicles.*') ? 'active' : '' }}">
+        <a class="nav-link" href="{{ route('admin.vehicles.index') }}">
+            <i class="fas fa-fw fa-car"></i>
+            <span>Manajemen Kendaraan</span>
+        </a>
+    </li>
+
     <!-- Nav Item - Manajemen Pengguna -->
     <li class="nav-item {{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
         <a class="nav-link" href="{{ route('admin.users.index') }}">

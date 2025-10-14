@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\SparePartController;
 use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Admin\TransactionController;
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -53,6 +53,11 @@ Route::middleware('auth')->group(function () {
 // =================================================================
 // GRUP RUTE UNTUK ADMIN
 // =================================================================
+// use case
+use App\Http\Controllers\Admin\TransactionController;
+use App\Http\Controllers\Admin\VehicleController;
+use App\Http\Controllers\Admin\TransactionServiceController;
+use App\Http\Controllers\Admin\TransactionSparePartController;
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function() {
     // Dashboard Admin
     Route::get('/dashboard', function () {
@@ -60,11 +65,22 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         return view('admin.dashboard'); // Placeholder
     })->name('dashboard');
 
+     // Rute resource untuk Transaksi
+    Route::resource('transactions', TransactionController::class);
+
+    // Rute untuk menambah & menghapus JASA pada sebuah transaksi
+    Route::post('transactions/{transaction}/services', [TransactionServiceController::class, 'store'])->name('transactions.services.store');
+    Route::delete('transactions/services/{transactionService}', [TransactionServiceController::class, 'destroy'])->name('transactions.services.destroy');
+    
+    // Rute untuk menambah & menghapus SPAREPART pada sebuah transaksi
+    Route::post('transactions/{transaction}/spare-parts', [TransactionSparePartController::class, 'store'])->name('transactions.spare-parts.store');
+    Route::delete('transactions/spare-parts/{transactionSparePart}', [TransactionSparePartController::class, 'destroy'])->name('transactions.spare-parts.destroy');
+
     // Manajemen Pengguna (Users)
     Route::resource('users', UserController::class); // Contoh untuk CRUD lengkap
 
     // Manajemen Kendaraan (Vehicles)
-    // Route::resource('vehicles', VehicleController::class);
+    Route::resource('vehicles', VehicleController::class);
 
     // Manajemen Jasa (Services)
     Route::resource('services', ServiceController::class);

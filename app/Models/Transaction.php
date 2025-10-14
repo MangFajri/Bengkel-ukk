@@ -133,4 +133,29 @@ class Transaction extends Model
     {
         return $this->hasMany(StockMovement::class, 'transaction_id');
     }
+
+    // =================================================================
+    // LOGIKA BISNIS
+    // =================================================================
+    
+    /**
+     * Menghitung ulang total_amount berdasarkan detail jasa dan sparepart.
+     */
+    public function recalculateTotalAmount(): void
+    {
+        // Muat ulang relasi untuk memastikan data yang dihitung adalah yang terbaru
+        $this->load(['transactionServices', 'transactionSpareParts']);
+
+        // Hitung total dari semua detail jasa
+        $totalServices = $this->transactionServices->sum('price_at_time');
+
+        // Hitung total dari semua detail sparepart (harga * jumlah)
+        $totalSpareParts = $this->transactionSpareParts->sum(function ($detail) {
+            return $detail->price_at_time * $detail->qty;
+        });
+
+        // Jumlahkan keduanya, update properti total_amount, dan simpan ke database
+        $this->total_amount = $totalServices + $totalSpareParts;
+        $this->save();
+    }
 } 

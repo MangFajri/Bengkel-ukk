@@ -14,7 +14,7 @@
 
     <div class="card shadow mb-4">
         <div class="card-header py-3">
-            <a href="{{ route('admin.transactions.create') }}" class="btn btn-primary">Buat Transaksi Baru</a> 
+            <a href="{{ route('admin.transactions.create') }}" class="btn btn-primary">Buat Transaksi Baru</a>
         </div>
         <div class="card-body">
             <div class="table-responsive">
@@ -49,10 +49,12 @@
                                 </td>
                                 <td>{{ $transaction->check_in_at->format('d M Y, H:i') }}</td>
                                 <td>
-                                    <a href="#" class="btn btn-sm btn-info">
+                                    <a href="{{ route('admin.transactions.show', $transaction->id) }}"
+                                        class="btn btn-sm btn-info">
                                         <i class="fa fa-eye"></i>
                                     </a>
-                                    <a href="#" class="btn btn-sm btn-warning">
+                                    <a href="{{ route('admin.transactions.edit', $transaction->id) }}"
+                                        class="btn btn-sm btn-warning">
                                         <i class="fa fa-edit"></i>
                                     </a>
                                 </td>
@@ -65,7 +67,7 @@
                     </tbody>
                 </table>
             </div>
-            
+
             <div class="mt-3">
                 {{ $transactions->links() }}
             </div>
