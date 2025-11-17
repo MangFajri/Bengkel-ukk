@@ -67,6 +67,14 @@
         </a>
     </li>
 
+     <!-- Nav Item - Metode Pembayaran -->
+    <li class="nav-item {{ request()->routeIs('admin.payment-methods.*') ? 'active' : '' }}">
+        <a class="nav-link" href="{{ route('admin.payment-methods.index') }}">
+            <i class="fas fa-fw fa-credit-card"></i>
+            <span>Metode Pembayaran</span>
+        </a>
+    </li>
+
     <!-- Divider -->
     <hr class="sidebar-divider d-none d-md-block">
 

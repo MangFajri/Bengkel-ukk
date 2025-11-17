@@ -156,4 +156,61 @@
         <a href="{{ route('admin.transactions.index') }}" class="btn btn-secondary">Kembali ke Daftar</a>
     </div>
 
+    {{-- Area Kasir / Pembayaran --}}
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">Proses Pembayaran</h6>
+            <h6 class="m-0 font-weight-bold text-danger">Total Tagihan: Rp {{ number_format($transaction->total_amount, 0, ',', '.') }}</h6>
+        </div>
+        <div class="card-body">
+            <form action="{{ route('admin.transactions.updatePayment', $transaction->id) }}" method="POST">
+                @csrf
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="payment_method_id">Metode Bayar</label>
+                            <select name="payment_method_id" id="payment_method_id" class="form-control" required>
+                                <option value="">-- Pilih Metode --</option>
+                                @foreach ($paymentMethods as $method)
+                                    <option value="{{ $method->id }}" {{ $transaction->payment_method_id == $method->id ? 'selected' : '' }}>
+                                        {{ $method->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="amount_paid">Jumlah Dibayar</label>
+                             <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text">Rp</span>
+                                </div>
+                                <input type="number" name="amount_paid" id="amount_paid" class="form-control" value="{{ $transaction->amount_paid ?? 0 }}" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="payment_status_id">Status Pembayaran</label>
+                            <select name="payment_status_id" id="payment_status_id" class="form-control" required>
+                                <option value="">-- Pilih Status --</option>
+                                @foreach ($paymentStatuses as $status)
+                                     <option value="{{ $status->id }}" {{ $transaction->payment_status_id == $status->id ? 'selected' : '' }}>
+                                        {{ $status->label }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success">Update Pembayaran</button>
+            </form>
+        </div>
+    </div>
+
+
+    {{-- Tombol Aksi Final --}}
+    <div class="d-flex justify-content-end">
+    {{-- ... (tombol kembali) ... --}}
 @endsection

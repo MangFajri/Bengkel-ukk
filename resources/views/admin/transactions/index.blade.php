@@ -49,13 +49,11 @@
                                 </td>
                                 <td>{{ $transaction->check_in_at->format('d M Y, H:i') }}</td>
                                 <td>
-                                    <a href="{{ route('admin.transactions.show', $transaction->id) }}"
-                                        class="btn btn-sm btn-info">
-                                        <i class="fa fa-eye"></i>
-                                    </a>
+                                    
                                     <a href="{{ route('admin.transactions.edit', $transaction->id) }}"
-                                        class="btn btn-sm btn-warning">
+                                        class="btn btn-sm btn-warning" title="Edit">
                                         <i class="fa fa-edit"></i>
+                                    </a>
                                     </a>
                                 </td>
                             </tr>

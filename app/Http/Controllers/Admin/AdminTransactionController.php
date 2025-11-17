@@ -6,15 +6,16 @@ use App\Http\Controllers\Controller;
 use App\Models\Service;
 use App\Models\SparePart;
 use App\Models\Transaction;
-use App\Http\Requests\StoreTransactionRequest;
+use App\Models\PaymentMethod;
 use App\Models\PaymentStatus;
 use App\Models\ServiceStatus;
 use App\Models\User;
 use App\Models\Vehicle;
+use App\Http\Requests\StoreTransactionRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
-class TransactionController extends Controller
+class AdminTransactionController extends Controller
 {
     /**
      * Display a listing of the resource.
@@ -85,15 +86,36 @@ class TransactionController extends Controller
         $services = Service::where('is_active', true)->get();
         $spareParts = SparePart::where('is_active', true)->get();
 
-        return view('admin.transactions.edit', compact('transaction', 'services', 'spareParts'));
+        $paymentMethods = PaymentMethod::all();
+        $paymentStatuses = PaymentStatus::all();
+
+        return view('admin.transactions.edit', compact(
+            'transaction', 
+            'services', 
+            'spareParts', 
+            'paymentMethods', // <-- Tambahkan ini
+            'paymentStatuses' // <-- Tambahkan ini
+        ));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Transaction $transaction)
+     public function updatePaymentStatus(Request $request, Transaction $transaction)
     {
-        //
+        $request->validate([
+            'payment_method_id' => 'required|exists:payment_methods,id',
+            'amount_paid' => 'required|numeric|min:0',
+            'payment_status_id' => 'required|exists:payment_statuses,id',
+        ]);
+
+        $transaction->update([
+            'payment_method_id' => $request->payment_method_id,
+            'amount_paid' => $request->amount_paid,
+            'payment_status_id' => $request->payment_status_id,
+        ]);
+
+        return redirect()->route('admin.transactions.edit', $transaction->id)->with('success', 'Status pembayaran berhasil diperbarui.');
     }
 
     /**

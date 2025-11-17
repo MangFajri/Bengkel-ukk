@@ -41,6 +41,8 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
+        // 1. Lakukan upaya login seperti biasa
+        // Kita ambil email & password secara manual menggunakan $this->only()
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
@@ -49,7 +51,32 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        // =================================================================
+        // BLOK PERBAIKAN LOGIKA (TAMBAHAN KITA)
+        // =================================================================
+        // 2. Ambil data user yang baru saja berhasil login
+        $user = Auth::user();
+
+        // 3. Periksa apakah user tersebut sudah di-soft delete
+        if ($user->deleted_at !== null) {
+            // 4. Jika ya, segera logout paksa user tersebut
+            Auth::logout();
+            $this->session()->invalidate();
+            $this->session()->regenerateToken();
+
+            // 5. Kirim pesan error yang jelas
+            throw ValidationException::withMessages([
+                'email' => 'Akun ini sudah tidak aktif atau telah dihapus.',
+            ]);
+        }
+        // =================================================================
+        // AKHIR DARI BLOK PERBAIKAN
+        // =================================================================
+
+        // 6. Jika lolos pengecekan, bersihkan rate limiter dan lanjutkan
         RateLimiter::clear($this->throttleKey());
+
+        $this->session()->regenerate();
     }
 
     /**

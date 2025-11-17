@@ -6,6 +6,10 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\SparePartController;
 use App\Http\Controllers\Admin\UserController;
+// Beri nama alias yang jelas
+use App\Http\Controllers\Mechanic\DashboardController as MechanicDashboardController;
+use App\Http\Controllers\Customer\DashboardController as CustomerDashboardController;
+use App\Http\Controllers\Mechanic\JobController;
 
 /*
 |--------------------------------------------------------------------------
@@ -54,8 +58,9 @@ Route::middleware('auth')->group(function () {
 // GRUP RUTE UNTUK ADMIN
 // =================================================================
 // use case
-use App\Http\Controllers\Admin\TransactionController;
+use App\Http\Controllers\Admin\AdminTransactionController;
 use App\Http\Controllers\Admin\VehicleController;
+use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\TransactionServiceController;
 use App\Http\Controllers\Admin\TransactionSparePartController;
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function() {
@@ -66,7 +71,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     })->name('dashboard');
 
      // Rute resource untuk Transaksi
-    Route::resource('transactions', TransactionController::class);
+    Route::resource('transactions', AdminTransactionController::class);
 
     // Rute untuk menambah & menghapus JASA pada sebuah transaksi
     Route::post('transactions/{transaction}/services', [TransactionServiceController::class, 'store'])->name('transactions.services.store');
@@ -82,6 +87,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     // Manajemen Kendaraan (Vehicles)
     Route::resource('vehicles', VehicleController::class);
 
+     // Manajemen Metode Pembayaran 
+    Route::resource('payment-methods', PaymentMethodController::class);
+
     // Manajemen Jasa (Services)
     Route::resource('services', ServiceController::class);
 
@@ -89,7 +97,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::resource('spare-parts', SparePartController::class);
 
     // Manajemen Transaksi (Transactions)
-    Route::resource('transactions', TransactionController::class);
+    Route::resource('transactions', AdminTransactionController::class);
+
+     Route::post('transactions/{transaction}/pay', [AdminTransactionController::class, 'updatePaymentStatus'])->name('transactions.updatePayment');
 });
 
 
@@ -98,33 +108,29 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 // =================================================================
 Route::middleware(['auth', 'role:mechanic'])->prefix('mechanic')->name('mechanic.')->group(function() {
     // Dashboard Mekanik (Menampilkan Antrean Kerja)
-    Route::get('/dashboard', function () {
-        // Logika untuk menampilkan antrean kerja
-        return "<h1>Dashboard Mekanik</h1>"; // Placeholder
-    })->name('dashboard');
+    Route::get('/dashboard', [MechanicDashboardController::class, 'index'])->name('dashboard');
 
-    // Melihat Detail & Mengupdate Pekerjaan
-    // Route::get('/jobs/{transaction}', [MechanicJobController::class, 'show'])->name('jobs.show');
-    // Route::post('/jobs/{transaction}/update-status', [MechanicJobController::class, 'updateStatus'])->name('jobs.updateStatus');
+    // Nanti kita akan tambahkan rute untuk melihat detail & update status
+    Route::get('/jobs/{transaction}', [JobController::class, 'show'])->name('jobs.show');
+    Route::post('/jobs/{transaction}/update-status', [JobController::class, 'updateStatus'])->name('jobs.updateStatus');
 });
 
 
 // =================================================================
 // GRUP RUTE UNTUK PELANGGAN (CUSTOMER)
 // =================================================================
+use App\Http\Controllers\Customer\CustomerTransactionController;
+use App\Http\Controllers\Customer\VehicleController as CustomerVehicleController;
 Route::middleware(['auth', 'role:customer'])->prefix('customer')->name('customer.')->group(function() {
     // Dashboard Pelanggan
-    Route::get('/dashboard', function () {
-        // Logika untuk menampilkan ringkasan data pelanggan
-        return "<h1>Dashboard Pelanggan</h1>"; // Placeholder
-    })->name('dashboard');
+    Route::get('/dashboard', [CustomerDashboardController::class, 'index'])->name('dashboard');
     
     // Melihat Riwayat Transaksi
-    // Route::get('/transactions', [CustomerTransactionController::class, 'index'])->name('transactions.index');
-    // Route::get('/transactions/{transaction}', [CustomerTransactionController::class, 'show'])->name('transactions.show');
+   Route::get('/transactions', [CustomerTransactionController::class, 'index'])->name('transactions.index');
+    Route::get('/transactions/{transaction}', [CustomerTransactionController::class, 'show'])->name('transactions.show');
 
     // Manajemen Kendaraan Milik Pelanggan
-    // Route::resource('vehicles', CustomerVehicleController::class);
+    Route::resource('vehicles', CustomerVehicleController::class);
 });
 
 
