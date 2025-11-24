@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use App\Models\User; // PENTING: Pastikan model User di-import
+use Illuminate\Support\Facades\Hash; // PENTING: Pastikan Hash di-import
 
 class LoginRequest extends FormRequest
 {
@@ -22,7 +24,7 @@ class LoginRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, \Illuminate\Contracts\Validation\Rule|array|string>
      */
     public function rules(): array
     {
@@ -41,9 +43,11 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        // 1. Lakukan upaya login seperti biasa
-        // Kita ambil email & password secara manual menggunakan $this->only()
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        // 1. Cari user (termasuk yang dihapus)
+        $user = User::withTrashed()->where('email', $this->input('email'))->first();
+
+        // 2. Cek Validasi Password & Ketersediaan User
+        if (! $user || ! Hash::check($this->input('password'), $user->password)) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
@@ -51,38 +55,36 @@ class LoginRequest extends FormRequest
             ]);
         }
 
-        // =================================================================
-        // BLOK PERBAIKAN LOGIKA (TAMBAHAN KITA)
-        // =================================================================
-        // 2. Ambil data user yang baru saja berhasil login
-        $user = Auth::user();
-
-        // 3. Periksa apakah user tersebut sudah di-soft delete
-        if ($user->deleted_at !== null) {
-            // 4. Jika ya, segera logout paksa user tersebut
-            Auth::logout();
-            $this->session()->invalidate();
-            $this->session()->regenerateToken();
-
-            // 5. Kirim pesan error yang jelas
+        // 3. Cek Soft Delete (Tong Sampah)
+        if ($user->trashed()) {
+            RateLimiter::hit($this->throttleKey());
             throw ValidationException::withMessages([
-                'email' => 'Akun ini sudah tidak aktif atau telah dihapus.',
+                'email' => 'Akun ini telah dihapus dan tidak dapat digunakan.',
             ]);
         }
-        // =================================================================
-        // AKHIR DARI BLOK PERBAIKAN
-        // =================================================================
 
-        // 6. Jika lolos pengecekan, bersihkan rate limiter dan lanjutkan
+        // 4. [TAMBAHAN PENTING] Cek Status Aktif (is_active)
+        // Ini menjaga konsistensi dengan model User.php yang kamu kirim sebelumnya
+        if (!$user->is_active) {
+            RateLimiter::hit($this->throttleKey());
+            throw ValidationException::withMessages([
+                'email' => 'Akun Anda sedang dinonaktifkan. Hubungi Admin.',
+            ]);
+        }
+
+        // 5. Login Manual
+        Auth::login($user, $this->boolean('remember'));
+        
         RateLimiter::clear($this->throttleKey());
-
+        
+        // Catatan Kecil: 
+        // session()->regenerate() biasanya ada di Controller, 
+        // tapi ditaruh di sini juga aman.
         $this->session()->regenerate();
     }
 
     /**
      * Ensure the login request is not rate limited.
-     *
-     * @throws \Illuminate\Validation\ValidationException
      */
     public function ensureIsNotRateLimited(): void
     {
@@ -107,6 +109,6 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+        return Str::transliterate(Str::lower($this->input('email')).'|'.$this->ip());
     }
 }
