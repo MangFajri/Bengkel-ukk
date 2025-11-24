@@ -1,28 +1,44 @@
-<ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+<ul class="navbar-nav sidebar sidebar-dark accordion" id="accordionSidebar" style="background-color: #020617 !important; background-image: none;">
 
-    <!-- Sidebar - Brand -->
-    <a class="sidebar-brand d-flex align-items-center justify-content-center" href="{{ route('mechanic.dashboard') }}">
+    <a class="sidebar-brand d-flex align-items-center justify-content-center" href="{{ route('dashboard') }}">
         <div class="sidebar-brand-icon rotate-n-15">
-            <i class="fas fa-fw fa-tools"></i>
+            <i class="fas fa-wrench" style="color: #f97316;"></i>
         </div>
-        <div class="sidebar-brand-text mx-3">Dasbor Mekanik</div>
+        <div class="sidebar-brand-text mx-3" style="font-family: 'Oswald', sans-serif;">
+            Mekanik<span style="color: #f97316;">Area</span>
+        </div>
     </a>
 
-    <!-- Divider -->
     <hr class="sidebar-divider my-0">
 
-    <!-- Nav Item - Dashboard -->
-    <li class="nav-item {{ request()->routeIs('mechanic.dashboard') ? 'active' : '' }}">
-        <a class="nav-link" href="{{ route('mechanic.dashboard') }}">
-            <i class="fas fa-fw fa-tasks"></i>
-            <span>Daftar Tugas</span>
+    <li class="nav-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+        <a class="nav-link" href="{{ route('dashboard') }}">
+            <i class="fas fa-fw fa-tachometer-alt"></i>
+            <span>Dashboard</span></a>
+    </li>
+
+    <hr class="sidebar-divider">
+
+    <div class="sidebar-heading">
+        Tugas
+    </div>
+
+    <li class="nav-item {{ request()->routeIs('mechanic.jobs.*') ? 'active' : '' }}">
+        <a class="nav-link" href="{{ route('mechanic.jobs.index') }}">
+            <i class="fas fa-fw fa-tools"></i>
+            <span>Daftar Pekerjaan</span>
         </a>
     </li>
 
-    <!-- Divider -->
+    <li class="nav-item">
+        <a class="nav-link" href="#">
+            <i class="fas fa-fw fa-history"></i>
+            <span>Riwayat Service</span>
+        </a>
+    </li>
+
     <hr class="sidebar-divider d-none d-md-block">
 
-    <!-- Sidebar Toggler (Sidebar) -->
     <div class="text-center d-none d-md-inline">
         <button class="rounded-circle border-0" id="sidebarToggle"></button>
     </div>
