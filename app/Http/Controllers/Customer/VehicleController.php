@@ -4,68 +4,104 @@ namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Vehicle;
-use App\Http\Requests\Customer\StoreVehicleRequest;
-use App\Http\Requests\Customer\UpdateVehicleRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class VehicleController extends Controller
 {
+    /**
+     * Menampilkan daftar kendaraan milik customer yang sedang login.
+     */
     public function index()
     {
-        $vehicles = Vehicle::where('user_id', Auth::id())->latest()->paginate(10);
+        // Ambil kendaraan HANYA milik user yang sedang login
+        $vehicles = Vehicle::where('user_id', Auth::id())->latest()->get();
+        
         return view('customer.vehicles.index', compact('vehicles'));
     }
 
+    /**
+     * Menampilkan form tambah kendaraan.
+     */
     public function create()
     {
         return view('customer.vehicles.create');
     }
 
-    public function store(StoreVehicleRequest $request)
+    /**
+     * Menyimpan data kendaraan baru ke database.
+     */
+    public function store(Request $request)
     {
-        $validatedData = $request->validated();
-        // Secara otomatis set pemilik kendaraan adalah user yang sedang login
-        $validatedData['user_id'] = Auth::id();
+        $request->validate([
+            'plate_number'   => 'required|string|max:20|unique:vehicles',
+            'brand'          => 'required|string|max:50',
+            'model'          => 'required|string|max:50',
+            'year'           => 'required|integer|min:1900|max:' . (date('Y') + 1),
+            'color'          => 'nullable|string|max:30',
+            // Tambahan Validasi (Boleh kosong/nullable biar user gak males isi)
+            'engine_number'  => 'nullable|string|max:100',
+            'chassis_number' => 'nullable|string|max:100',
+        ]);
 
-        Vehicle::create($validatedData);
+        Auth::user()->vehicles()->create([
+            'plate_number'   => $request->plate_number,
+            'brand'          => $request->brand,
+            'model'          => $request->model,
+            'year'           => $request->year,
+            'color'          => $request->color,
+            // Simpan data baru
+            'engine_number'  => $request->engine_number,
+            'chassis_number' => $request->chassis_number,
+        ]);
 
-        return redirect()->route('customer.vehicles.index')->with('success', 'Kendaraan baru berhasil ditambahkan.');
+        return redirect()->route('customer.vehicles.index')
+            ->with('success', 'Kendaraan berhasil ditambahkan!');
     }
 
+    /**
+     * (Opsional untuk UKK) Form Edit
+     */
     public function edit(Vehicle $vehicle)
     {
-        // KEAMANAN: Pastikan pelanggan hanya bisa mengedit kendaraannya sendiri
+        // Pastikan mobil ini punya dia
         if ($vehicle->user_id !== Auth::id()) {
             abort(403);
         }
         return view('customer.vehicles.edit', compact('vehicle'));
     }
 
-    public function update(UpdateVehicleRequest $request, Vehicle $vehicle)
+    /**
+     * (Opsional untuk UKK) Update Data
+     */
+    public function update(Request $request, Vehicle $vehicle)
     {
-        // KEAMANAN: Pastikan pelanggan hanya bisa mengupdate kendaraannya sendiri
+        if ($vehicle->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        $request->validate([
+            'license_plate' => 'required|string|max:20|unique:vehicles,license_plate,' . $vehicle->id,
+            'brand'         => 'required|string|max:50',
+            'model'         => 'required|string|max:50',
+            'year'          => 'required|integer',
+        ]);
+
+        $vehicle->update($request->all());
+
+        return redirect()->route('customer.vehicles.index')->with('success', 'Data kendaraan diperbarui.');
+    }
+
+    /**
+     * Hapus Kendaraan
+     */
+    public function destroy(Vehicle $vehicle)
+    {
         if ($vehicle->user_id !== Auth::id()) {
             abort(403);
         }
         
-        $vehicle->update($request->validated());
-
-        return redirect()->route('customer.vehicles.index')->with('success', 'Data kendaraan berhasil diperbarui.');
-    }
-
-    public function destroy(Vehicle $vehicle)
-    {
-        // KEAMANAN: Pastikan pelanggan hanya bisa menghapus kendaraannya sendiri
-        if ($vehicle->user_id !== Auth::id()) {
-            abort(403);
-        }
-
-        try {
-            $vehicle->delete();
-            return redirect()->route('customer.vehicles.index')->with('success', 'Data kendaraan berhasil dihapus.');
-        } catch (\Illuminate\Database\QueryException $e) {
-            return redirect()->route('customer.vehicles.index')->with('error', 'Kendaraan tidak bisa dihapus karena memiliki riwayat servis.');
-        }
+        $vehicle->delete();
+        return redirect()->back()->with('success', 'Kendaraan dihapus.');
     }
 }

@@ -1,216 +1,133 @@
 @extends('layouts.admin')
 
-@section('title', 'Detail Transaksi TRX-' . $transaction->id)
+@section('title', 'Kelola Transaksi #' . $transaction->id)
 
 @section('content')
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            {{ session('success') }}
-            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-            </button>
-        </div>
-    @endif
+    <div class="row">
 
-    {{-- Kartu Info Transaksi --}}
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Informasi Utama</h6>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-4">
-                    <strong>Pelanggan:</strong><p>{{ $transaction->customer->name }}</p>
+        <!-- Kolom Kiri: Detail & Aksi -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4" style="background-color: #1e293b; border: 1px solid #334155;">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between"
+                    style="background-color: #1e293b;">
+                    <h6 class="m-0 font-weight-bold text-primary">Detail Service</h6>
                 </div>
-                <div class="col-md-4">
-                    <strong>Kendaraan:</strong><p>{{ $transaction->vehicle->plate_number }} ({{ $transaction->vehicle->brand }} {{ $transaction->vehicle->model }})</p>
-                </div>
-                <div class="col-md-4">
-                    <strong>Mekanik:</strong><p>{{ $transaction->mechanic->name }}</p>
-                </div>
-            </div>
-        </div>
-    </div>
+                <div class="card-body">
+                    <form action="{{ route('admin.transactions.update', $transaction->id) }}" method="POST">
+                        @csrf
+                        @method('PUT')
 
-    {{-- Bagian Jasa --}}
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Detail Jasa</h6>
-        </div>
-        <div class="card-body">
-            {{-- Form Tambah Jasa --}}
-            <form action="{{ route('admin.transactions.services.store', $transaction->id) }}" method="POST" class="mb-4">
-                @csrf
-                <div class="row">
-                    <div class="col-md-8">
-                        <select name="service_id" class="form-control" required>
-                            <option value="">-- Pilih Jasa --</option>
-                            @foreach ($services as $service)
-                                <option value="{{ $service->id }}">{{ $service->name }} (Rp {{ number_format($service->price, 0, ',', '.') }})</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <button type="submit" class="btn btn-primary w-100">Tambah Jasa</button>
-                    </div>
-                </div>
-            </form>
-
-            {{-- Tabel Daftar Jasa yang Sudah Ditambahkan --}}
-            <table class="table table-bordered">
-                <thead>
-                    <tr>
-                        <th>Nama Jasa</th>
-                        <th>Harga</th>
-                        <th>Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse ($transaction->transactionServices as $detail)
-                        <tr>
-                            <td>{{ $detail->service->name }}</td>
-                            <td>Rp {{ number_format($detail->price_at_time, 0, ',', '.') }}</td>
-                            <td>
-                                <form action="{{ route('admin.transactions.services.destroy', $detail->id) }}" method="POST">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Yakin ingin hapus item ini?')">Hapus</button>
-                                </form>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="3" class="text-center">Belum ada jasa yang ditambahkan.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    {{-- Bagian Sparepart (Strukturnya sama dengan Jasa) --}}
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Detail Sparepart</h6>
-        </div>
-        <div class="card-body">
-            {{-- Form Tambah Sparepart --}}
-            <form action="{{ route('admin.transactions.spare-parts.store', $transaction->id) }}" method="POST" class="mb-4">
-                @csrf
-                <div class="row">
-                    <div class="col-md-5">
-                        <select name="spare_part_id" class="form-control" required>
-                            <option value="">-- Pilih Sparepart --</option>
-                            @foreach ($spareParts as $sparePart)
-                                <option value="{{ $sparePart->id }}">{{ $sparePart->name }} (Stok: {{ $sparePart->stock }})</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <input type="number" name="qty" class="form-control" placeholder="Jumlah" value="1" min="1" required>
-                    </div>
-                     <div class="col-md-4">
-                        <button type="submit" class="btn btn-primary w-100">Tambah Sparepart</button>
-                    </div>
-                </div>
-            </form>
-
-            {{-- Tabel Daftar Sparepart yang Sudah Ditambahkan --}}
-            <table class="table table-bordered">
-                 <thead>
-                    <tr>
-                        <th>Nama Sparepart</th>
-                        <th>Jumlah</th>
-                        <th>Harga Satuan</th>
-                        <th>Subtotal</th>
-                        <th>Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse ($transaction->transactionSpareParts as $detail)
-                        <tr>
-                            <td>{{ $detail->sparePart->name }}</td>
-                            <td>{{ $detail->qty }}</td>
-                            <td>Rp {{ number_format($detail->price_at_time, 0, ',', '.') }}</td>
-                            <td>Rp {{ number_format($detail->price_at_time * $detail->qty, 0, ',', '.') }}</td>
-                            <td>
-                                <form action="{{ route('admin.transactions.spare-parts.destroy', $detail->id) }}" method="POST">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Yakin ingin hapus item ini?')">Hapus</button>
-                                </form>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="5" class="text-center">Belum ada sparepart yang ditambahkan.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    {{-- Tombol Aksi Final --}}
-    <div class="d-flex justify-content-end">
-        <a href="{{ route('admin.transactions.index') }}" class="btn btn-secondary">Kembali ke Daftar</a>
-    </div>
-
-    {{-- Area Kasir / Pembayaran --}}
-    <div class="card shadow mb-4">
-        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-            <h6 class="m-0 font-weight-bold text-primary">Proses Pembayaran</h6>
-            <h6 class="m-0 font-weight-bold text-danger">Total Tagihan: Rp {{ number_format($transaction->total_amount, 0, ',', '.') }}</h6>
-        </div>
-        <div class="card-body">
-            <form action="{{ route('admin.transactions.updatePayment', $transaction->id) }}" method="POST">
-                @csrf
-                <div class="row">
-                    <div class="col-md-4">
-                        <div class="form-group">
-                            <label for="payment_method_id">Metode Bayar</label>
-                            <select name="payment_method_id" id="payment_method_id" class="form-control" required>
-                                <option value="">-- Pilih Metode --</option>
-                                @foreach ($paymentMethods as $method)
-                                    <option value="{{ $method->id }}" {{ $transaction->payment_method_id == $method->id ? 'selected' : '' }}>
-                                        {{ $method->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="form-group">
-                            <label for="amount_paid">Jumlah Dibayar</label>
-                             <div class="input-group">
-                                <div class="input-group-prepend">
-                                    <span class="input-group-text">Rp</span>
-                                </div>
-                                <input type="number" name="amount_paid" id="amount_paid" class="form-control" value="{{ $transaction->amount_paid ?? 0 }}" required>
+                        <div class="form-group row">
+                            <div class="col-md-6">
+                                <label class="small text-gray-400 font-weight-bold">Customer</label>
+                                <input type="text" class="form-control" value="{{ $transaction->customer->name }}" readonly
+                                    disabled>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="small text-gray-400 font-weight-bold">Kendaraan</label>
+                                <input type="text" class="form-control"
+                                    value="{{ $transaction->vehicle->brand }} {{ $transaction->vehicle->model }} ({{ $transaction->vehicle->plate_number }})"
+                                    readonly disabled>
                             </div>
                         </div>
-                    </div>
-                    <div class="col-md-4">
+
                         <div class="form-group">
-                            <label for="payment_status_id">Status Pembayaran</label>
-                            <select name="payment_status_id" id="payment_status_id" class="form-control" required>
-                                <option value="">-- Pilih Status --</option>
-                                @foreach ($paymentStatuses as $status)
-                                     <option value="{{ $status->id }}" {{ $transaction->payment_status_id == $status->id ? 'selected' : '' }}>
+                            <label class="small text-gray-400 font-weight-bold">Keluhan Customer</label>
+                            <textarea class="form-control" rows="2" readonly disabled
+                                style="background-color: #0f172a;">{{ $transaction->notes ?? '-' }}</textarea>
+                        </div>
+
+                        <hr class="border-secondary my-4">
+
+                        <!-- BAGIAN UPDATE STATUS (PENTING) -->
+                        <h6 class="text-warning font-weight-bold mb-3"><i class="fas fa-cogs mr-1"></i> Update Pengerjaan
+                        </h6>
+
+                        <div class="form-group row">
+                            <div class="col-md-6">
+                                <label class="small text-gray-400 font-weight-bold">Pilih Mekanik</label>
+                                <select name="mechanic_id" class="form-control"
+                                    style="background-color: #0f172a; color: white;">
+                                    <option value="">-- Belum Ditunjuk --</option>
+                                    @foreach($mechanics as $mechanic)
+                                        <option value="{{ $mechanic->id }}" {{ $transaction->mechanic_id == $mechanic->id ? 'selected' : '' }}>
+                                            {{ $mechanic->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <small class="text-muted">Pilih mekanik agar job ini muncul di dashboard mereka.</small>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="small text-gray-400 font-weight-bold">Status Service</label>
+                                <select name="service_status_id" class="form-control"
+                                    style="background-color: #0f172a; color: white;">
+                                    @foreach($serviceStatuses as $status)
+                                        <option value="{{ $status->id }}" {{ $transaction->service_status_id == $status->id ? 'selected' : '' }}>
+                                            {{ $status->label }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="small text-gray-400 font-weight-bold">Status Pembayaran</label>
+                            <select name="payment_status_id" class="form-control"
+                                style="background-color: #0f172a; color: white;">
+                                @foreach($paymentStatuses as $status)
+                                    <option value="{{ $status->id }}" {{ $transaction->payment_status_id == $status->id ? 'selected' : '' }}>
                                         {{ $status->label }}
                                     </option>
                                 @endforeach
                             </select>
                         </div>
+
+                        <button type="submit" class="btn btn-primary btn-block font-weight-bold py-2 mt-4">
+                            <i class="fas fa-save mr-2"></i> SIMPAN PERUBAHAN
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kolom Kanan: Rincian Biaya -->
+        <!-- Kolom Kanan: Rincian Biaya -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4" style="background-color: #1e293b; border: 1px solid #334155;">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between"
+                    style="background-color: #1e293b;">
+                    <h6 class="m-0 font-weight-bold text-primary">Rincian Biaya</h6>
+
+                    <!-- TOMBOL CETAK (Hanya muncul jika status sudah LUNAS / PAID) -->
+                    @if($transaction->payment_status_id == 1)
+                        <a href="{{ route('admin.transactions.print', $transaction->id) }}" target="_blank"
+                            class="btn btn-sm btn-success shadow-sm">
+                            <i class="fas fa-print fa-sm text-white-50 mr-1"></i> Cetak
+                        </a>
+                    @endif
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush mb-3" style="background-color: transparent;">
+                        @foreach($transaction->services as $service)
+                            <li class="list-group-item d-flex justify-content-between align-items-center"
+                                style="background-color: #0f172a; border-color: #334155; color: white;">
+                                {{ $service->service->name ?? 'Layanan' }}
+                                <span class="badge badge-warning badge-pill">Rp
+                                    {{ number_format($service->price_at_time, 0, ',', '.') }}</span>
+                            </li>
+                        @endforeach
+
+                        <!-- Disini nanti list sparepart -->
+                    </ul>
+
+                    <div class="d-flex justify-content-between align-items-center mt-4">
+                        <h5 class="font-weight-bold text-white">TOTAL</h5>
+                        <h4 class="font-weight-bold text-warning">Rp
+                            {{ number_format($transaction->total_amount, 0, ',', '.') }}</h4>
                     </div>
                 </div>
-                <button type="submit" class="btn btn-success">Update Pembayaran</button>
-            </form>
+            </div>
         </div>
     </div>
-
-
-    {{-- Tombol Aksi Final --}}
-    <div class="d-flex justify-content-end">
-    {{-- ... (tombol kembali) ... --}}
 @endsection

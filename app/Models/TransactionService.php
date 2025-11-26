@@ -10,38 +10,27 @@ class TransactionService extends Model
 {
     use HasFactory;
 
-    protected $table = 'transaction_services';
-
-    // Tabel ini tidak memiliki timestamps (created_at, updated_at)
-    public $timestamps = false;
+    // Tabel ini tidak punya created_at/updated_at
+    public $timestamps = false; 
 
     protected $fillable = [
         'transaction_id',
         'service_id',
         'price_at_time',
         'qty',
-        'notes',
+        'notes'
     ];
-
-    protected $casts = [
-        'price_at_time' => 'decimal:2',
-        'qty' => 'integer',
-    ];
-
-    // =================================================================
-    // RELASI ELOQUENT
-    // =================================================================
 
     /**
-     * Mendapatkan transaksi induk dari detail ini.
+     * Relasi balik ke Transaksi Utama
      */
     public function transaction(): BelongsTo
     {
-        return $this->belongsTo(Transaction::class, 'transaction_id');
+        return $this->belongsTo(Transaction::class);
     }
 
     /**
-     * Mendapatkan data master jasa dari detail ini.
+     * Relasi ke Master Data Service (untuk ambil nama service)
      */
     public function service(): BelongsTo
     {

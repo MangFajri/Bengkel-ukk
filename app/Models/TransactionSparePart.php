@@ -10,40 +10,30 @@ class TransactionSparePart extends Model
 {
     use HasFactory;
 
-    protected $table = 'transaction_spare_parts';
-
-    public $timestamps = false;
+    // Tabel ini tidak punya created_at/updated_at
+    public $timestamps = false; 
 
     protected $fillable = [
         'transaction_id',
-        'spare_part_id',
-        'qty',
+        'service_id',
         'price_at_time',
-        'serial_number',
+        'qty',
+        'notes'
     ];
-
-    protected $casts = [
-        'qty' => 'integer',
-        'price_at_time' => 'decimal:2',
-    ];
-    
-    // =================================================================
-    // RELASI ELOQUENT
-    // =================================================================
 
     /**
-     * Mendapatkan transaksi induk dari detail ini.
+     * Relasi balik ke Transaksi Utama
      */
     public function transaction(): BelongsTo
     {
-        return $this->belongsTo(Transaction::class, 'transaction_id');
+        return $this->belongsTo(Transaction::class);
     }
 
     /**
-     * Mendapatkan data master sparepart dari detail ini.
+     * Relasi ke Master Data Service (untuk ambil nama service)
      */
-    public function sparePart(): BelongsTo
+    public function service(): BelongsTo
     {
-        return $this->belongsTo(SparePart::class, 'spare_part_id');
+        return $this->belongsTo(Service::class, 'service_id');
     }
 }

@@ -1,35 +1,31 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Auth;
-
+use App\Http\Controllers\Admin\AdminTransactionController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 // --- KUMPULAN CONTROLLER BREEZE/PROFIL ---
-use App\Http\Controllers\ProfileController;
-
+use App\Http\Controllers\Admin\PaymentMethodController;
 // --- KUMPULAN CONTROLLER ADMIN ---
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\SparePartController;
-use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Admin\AdminTransactionController;
-use App\Http\Controllers\Admin\VehicleController;
-use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\TransactionServiceController;
 use App\Http\Controllers\Admin\TransactionSparePartController;
-
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\VehicleController;
+use App\Http\Controllers\Customer\CustomerTransactionController;
+use App\Http\Controllers\Customer\DashboardController as CustomerDashboardController;
+use App\Http\Controllers\Customer\VehicleController as CustomerVehicleController;
 // --- KUMPULAN CONTROLLER MEKANIK ---
 use App\Http\Controllers\Mechanic\DashboardController as MechanicDashboardController;
 use App\Http\Controllers\Mechanic\JobController;
-
 // --- KUMPULAN CONTROLLER CUSTOMER ---
-use App\Http\Controllers\Customer\DashboardController as CustomerDashboardController;
-use App\Http\Controllers\Customer\CustomerTransactionController;
-use App\Http\Controllers\Customer\VehicleController as CustomerVehicleController;
-
+use App\Http\Controllers\ProfileController;
+use App\Models\PaymentStatus;
+use App\Models\Transaction;
 // --- KUMPULAN MODEL (UNTUK LOGIKA RUTE) ---
 // !!! PERBAIKAN PENTING: 'app' menjadi 'App' (Case-sensitive) !!!
-use App\Models\Transaction;
 use App\Models\User;
-use App\Models\PaymentStatus;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -63,7 +59,6 @@ Route::get('/dashboard', function () {
     return redirect('/');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-
 // Grup Rute yang Membutuhkan Otentikasi (Profil)
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -71,41 +66,14 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-
 // =================================================================
 // GRUP RUTE UNTUK ADMIN
 // =================================================================
-Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function() {
-    
+Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
+
     // Dashboard
-    Route::get('/dashboard', function () {
-        
-        // 1. Ambil ID status 'Lunas'
-        $paidStatusId = PaymentStatus::where('code', 'paid')->firstOrFail()->id;
-
-        // 2. Hitung Total Pendapatan (hanya dari transaksi yang LUNAS)
-        $totalRevenue = Transaction::where('payment_status_id', $paidStatusId)->sum('total_amount');
-        
-        // 3. Hitung Jumlah Pelanggan
-        $totalCustomers = User::where('role', 'customer')->count();
-        
-        // 4. Hitung Pekerjaan yang Sedang Berjalan
-        $pendingJobs = Transaction::whereHas('serviceStatus', function($query) {
-            $query->whereIn('code', ['waiting', 'in_progress']);
-        })->count();
-        
-        // 5. Hitung Jumlah Mekanik
-        $totalMechanics = User::where('role', 'mechanic')->count();
-
-        // 6. Kirim semua data ke view
-        return view('admin.dashboard', compact(
-            'totalRevenue',
-            'totalCustomers',
-            'pendingJobs',
-            'totalMechanics'
-        ));
-        
-    })->name('dashboard');
+    Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+   
 
     // --- Master Data ---
     Route::resource('services', ServiceController::class);
@@ -113,7 +81,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::resource('users', UserController::class);
     Route::resource('vehicles', VehicleController::class);
     Route::resource('payment-methods', PaymentMethodController::class);
-    
+
     // --- Transaksional ---
     // (Rute 'transactions' hanya perlu didaftarkan SATU KALI)
     Route::resource('transactions', AdminTransactionController::class);
@@ -126,29 +94,47 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
     // Rute Pembayaran
     Route::post('transactions/{transaction}/pay', [AdminTransactionController::class, 'updatePaymentStatus'])->name('transactions.updatePayment');
+    // Rute Cetak Struk
+    Route::get('transactions/{transaction}/print', [AdminTransactionController::class, 'print'])->name('transactions.print');
 });
-
 
 // =================================================================
 // GRUP RUTE UNTUK MEKANIK
 // =================================================================
-Route::middleware(['auth', 'role:mechanic'])->prefix('mechanic')->name('mechanic.')->group(function() {
-    Route::get('/dashboard', [MechanicDashboardController::class, 'index'])->name('dashboard');
-    Route::get('/jobs/{transaction}', [JobController::class, 'show'])->name('jobs.show');
-    Route::post('/jobs/{transaction}/update-status', [JobController::class, 'updateStatus'])->name('jobs.updateStatus');
-});
+Route::middleware(['auth', 'role:mechanic'])->prefix('mechanic')->name('mechanic.')->group(function () {
 
+    // Dashboard
+    Route::get('/dashboard', [MechanicDashboardController::class, 'index'])->name('dashboard');
+
+    // --- PERBAIKAN/TAMBAHAN ---
+
+    // 1. Route Riwayat (Taruh SEBELUM resource biar gak ketimpa logic {job})
+    Route::get('/jobs/history', [JobController::class, 'history'])->name('jobs.history');
+
+    // 2. Route Update Status
+    Route::post('/jobs/{transaction}/update-status', [JobController::class, 'updateStatus'])->name('jobs.updateStatus');
+
+    // 3. Resource Controller (Standard CRUD)
+    Route::resource('jobs', JobController::class)
+        ->only(['index', 'show'])
+        ->parameters(['jobs' => 'transaction']);
+
+});
 
 // =================================================================
 // GRUP RUTE UNTUK PELANGGAN (CUSTOMER)
 // =================================================================
-Route::middleware(['auth', 'role:customer'])->prefix('customer')->name('customer.')->group(function() {
+Route::middleware(['auth', 'role:customer'])->prefix('customer')->name('customer.')->group(function () {
+
     Route::get('/dashboard', [CustomerDashboardController::class, 'index'])->name('dashboard');
-    Route::get('/transactions', [CustomerTransactionController::class, 'index'])->name('transactions.index');
-    Route::get('/transactions/{transaction}', [CustomerTransactionController::class, 'show'])->name('transactions.show');
+
+    // --- PERBAIKAN DI SINI ---
+    // Gunakan 'resource' agar route create, store, dll otomatis ada.
+    Route::resource('transactions', CustomerTransactionController::class);
+    // -------------------------
+
     Route::resource('vehicles', CustomerVehicleController::class);
 });
-
 
 // Rute otentikasi yang dibuat oleh Laravel Breeze
 require __DIR__.'/auth.php';

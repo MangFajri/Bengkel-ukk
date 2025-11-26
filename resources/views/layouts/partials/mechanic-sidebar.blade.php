@@ -1,4 +1,5 @@
-<ul class="navbar-nav sidebar sidebar-dark accordion" id="accordionSidebar" style="background-color: #020617 !important; background-image: none;">
+<ul class="navbar-nav sidebar sidebar-dark accordion" id="accordionSidebar"
+    style="background-color: #020617 !important; background-image: none;">
 
     <a class="sidebar-brand d-flex align-items-center justify-content-center" href="{{ route('dashboard') }}">
         <div class="sidebar-brand-icon rotate-n-15">
@@ -23,15 +24,20 @@
         Tugas
     </div>
 
-    <li class="nav-item {{ request()->routeIs('mechanic.jobs.*') ? 'active' : '' }}">
+    <!-- Nav Item - Daftar Pekerjaan -->
+    <!-- PERBAIKAN: Kecualikan 'mechanic.jobs.history' agar tidak ikut aktif saat buka riwayat -->
+    <li
+        class="nav-item {{ (request()->routeIs('mechanic.jobs.*') && !request()->routeIs('mechanic.jobs.history')) ? 'active' : '' }}">
         <a class="nav-link" href="{{ route('mechanic.jobs.index') }}">
             <i class="fas fa-fw fa-tools"></i>
             <span>Daftar Pekerjaan</span>
         </a>
     </li>
 
-    <li class="nav-item">
-        <a class="nav-link" href="#">
+    <!-- Nav Item - Riwayat Service -->
+    <!-- Ini sudah benar, hanya aktif jika rute spesifik 'mechanic.jobs.history' -->
+    <li class="nav-item {{ request()->routeIs('mechanic.jobs.history') ? 'active' : '' }}">
+        <a class="nav-link" href="{{ route('mechanic.jobs.history') }}">
             <i class="fas fa-fw fa-history"></i>
             <span>Riwayat Service</span>
         </a>

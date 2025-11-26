@@ -18,12 +18,13 @@ class Vehicle extends Model
      */
     protected $fillable = [
         'user_id',
-        'plate_number',
-        'engine_number',
-        'chassis_number',
+        'plate_number',    // Sesuai dengan kolom di DB (bukan license_plate)
+        'engine_number',   // <-- Tambahan Baru
+        'chassis_number',  // <-- Tambahan Baru
         'brand',
         'model',
         'year',
+        'color',           // <-- Tambahan Baru
     ];
 
     /**
