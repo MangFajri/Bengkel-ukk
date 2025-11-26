@@ -10,35 +10,54 @@ use Illuminate\Http\Request;
 
 class TransactionServiceController extends Controller
 {
-    public function store(Request $request, Transaction $transaction)
+    public function store(Request $request)
     {
-        $request->validate(['service_id' => 'required|exists:services,id']);
-        $service = Service::find($request->service_id);
-
-        TransactionService::create([
-            'transaction_id' => $transaction->id,
-            'service_id' => $service->id,
-            'price_at_time' => $service->price,
+        $request->validate([
+            'transaction_id' => 'required|exists:transactions,id',
+            'service_id'     => 'required|exists:services,id',
         ]);
 
-        // Panggil method baru dari objek $transaction
-        $transaction->recalculateTotalAmount();
+        $service = Service::findOrFail($request->service_id);
 
-        return redirect()->route('admin.transactions.edit', $transaction->id)
-                         ->with('success', 'Jasa berhasil ditambahkan ke transaksi.');
+        TransactionService::create([
+            'transaction_id' => $request->transaction_id,
+            'service_id'     => $service->id,
+            'qty'            => 1,
+            'price_at_time'  => $service->price
+        ]);
+
+        // Update Total
+        $this->updateTransactionTotal($request->transaction_id);
+
+        return back()->with('success', 'Layanan jasa berhasil ditambahkan.');
     }
 
-    public function destroy(TransactionService $transactionService)
+    public function destroy($id)
     {
-        $transaction = $transactionService->transaction; // Ambil objek transaksi sebelum dihapus
-        $transactionService->delete();
+        $item = TransactionService::findOrFail($id);
+        $transactionId = $item->transaction_id;
+        
+        $item->delete();
 
-        // Panggil method baru dari objek $transaction
-        $transaction->recalculateTotalAmount();
+        // Update Total
+        $this->updateTransactionTotal($transactionId);
 
-        return redirect()->route('admin.transactions.edit', $transaction->id)
-                         ->with('success', 'Item jasa berhasil dihapus dari transaksi.');
+        return back()->with('success', 'Layanan jasa dihapus.');
     }
-    
-    // HAPUS METHOD PRIVATE recalculateTransactionTotal() DARI SINI
+
+    // Helper Private (Copy paste dari Sparepart controller biar aman)
+    private function updateTransactionTotal($transactionId)
+    {
+        $transaction = Transaction::with(['services', 'spareParts'])->find($transactionId);
+        
+        $totalService = $transaction->services->sum(function($s) {
+            return $s->price_at_time * $s->qty;
+        });
+
+        $totalParts = $transaction->spareParts->sum(function($p) {
+            return $p->price_at_time * $p->qty;
+        });
+
+        $transaction->update(['total_amount' => $totalService + $totalParts]);
+    }
 }

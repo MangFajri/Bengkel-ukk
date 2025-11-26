@@ -87,10 +87,20 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::resource('transactions', AdminTransactionController::class);
 
     // Rute Detail Transaksi (Jasa & Sparepart)
-    Route::post('transactions/{transaction}/services', [TransactionServiceController::class, 'store'])->name('transactions.services.store');
-    Route::delete('transactions/services/{transactionService}', [TransactionServiceController::class, 'destroy'])->name('transactions.services.destroy');
-    Route::post('transactions/{transaction}/spare-parts', [TransactionSparePartController::class, 'store'])->name('transactions.spare-parts.store');
-    Route::delete('transactions/spare-parts/{transactionSparePart}', [TransactionSparePartController::class, 'destroy'])->name('transactions.spare-parts.destroy');
+  // 1. Tambah & Hapus Jasa (Service)
+    // Kita sederhanakan URL-nya biar tidak butuh parameter {transaction} di URL
+    Route::post('transaction-services', [TransactionServiceController::class, 'store'])
+        ->name('transaction-services.store');
+        
+    Route::delete('transaction-services/{id}', [TransactionServiceController::class, 'destroy'])
+        ->name('transaction-services.destroy');
+
+    // 2. Tambah & Hapus Sparepart
+    Route::post('transaction-spare-parts', [TransactionSparePartController::class, 'store'])
+        ->name('transaction-spareparts.store');
+        
+    Route::delete('transaction-spare-parts/{id}', [TransactionSparePartController::class, 'destroy'])
+        ->name('transaction-spareparts.destroy');
 
     // Rute Pembayaran
     Route::post('transactions/{transaction}/pay', [AdminTransactionController::class, 'updatePaymentStatus'])->name('transactions.updatePayment');

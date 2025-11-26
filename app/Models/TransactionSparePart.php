@@ -4,36 +4,29 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TransactionSparePart extends Model
 {
     use HasFactory;
 
-    // Tabel ini tidak punya created_at/updated_at
-    public $timestamps = false; 
+    protected $table = 'transaction_spare_parts';
 
+    // --- INI YANG KURANG SEBELUMNYA ---
     protected $fillable = [
         'transaction_id',
-        'service_id',
-        'price_at_time',
+        'spare_part_id',
         'qty',
-        'notes'
+        'price_at_time',
     ];
+    // ----------------------------------
 
-    /**
-     * Relasi balik ke Transaksi Utama
-     */
-    public function transaction(): BelongsTo
+    public function transaction()
     {
         return $this->belongsTo(Transaction::class);
     }
 
-    /**
-     * Relasi ke Master Data Service (untuk ambil nama service)
-     */
-    public function service(): BelongsTo
+    public function sparePart()
     {
-        return $this->belongsTo(Service::class, 'service_id');
+        return $this->belongsTo(SparePart::class);
     }
 }
