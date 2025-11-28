@@ -4,82 +4,75 @@ namespace App\Http\Controllers\Mechanic;
 
 use App\Http\Controllers\Controller;
 use App\Models\Transaction;
+use App\Models\ServiceStatus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class JobController extends Controller
 {
     /**
-     * Menampilkan daftar pekerjaan (Index).
-     * Redirect ke dashboard karena list pekerjaan ada di sana.
+     * Tampilkan daftar pekerjaan SAYA SAJA (Active Jobs).
      */
     public function index()
     {
-        return redirect()->route('mechanic.dashboard');
+        // Ambil transaksi dimana mechanic_id adalah user yang login
+        // DAN status pembayarannya belum lunas (artinya masih proses pengerjaan)
+        $jobs = Transaction::with(['customer', 'vehicle', 'serviceStatus'])
+            ->where('mechanic_id', Auth::id())
+            ->where('payment_status_id', '!=', 1) // Asumsi ID 1 = Lunas/Selesai total
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return view('mechanic.dashboard', compact('jobs'));
     }
 
     /**
-     * Menampilkan detail pekerjaan.
-     * * PENTING: 
-     * Nama variabel parameter harus '$job' karena kita menggunakan Route::resource('jobs', ...).
-     * Tapi tipe datanya tetap 'Transaction' agar Model Binding bekerja.
+     * Tampilkan detail satu pekerjaan.
      */
-    public function show(Transaction $job) 
+    public function show($id)
     {
-        // Security Check: Pastikan job ini milik mekanik yang login
-        if ($job->mechanic_id !== Auth::id()) {
-            abort(403, 'Anda tidak memiliki akses ke pekerjaan ini.');
-        }
+        // Validasi: Pastikan job ini punya saya
+        $transaction = Transaction::with(['services', 'spareParts', 'customer', 'vehicle'])
+            ->where('id', $id)
+            ->where('mechanic_id', Auth::id())
+            ->firstOrFail(); // 404 jika mencoba akses job orang lain
 
-        // Load relasi yang dibutuhkan untuk tampilan detail
-        $job->load(['vehicle', 'customer', 'services', 'spareParts', 'serviceStatus']);
+        $statuses = ServiceStatus::all(); // Untuk dropdown update status
 
-        // Kirim data ke view dengan nama variabel '$transaction' agar view tidak perlu diubah
-        return view('mechanic.jobs.show', ['transaction' => $job]);
+        return view('mechanic.jobs.show', compact('transaction', 'statuses'));
     }
 
     /**
-     * Update status pengerjaan (Mulai / Selesai).
+     * Update status pengerjaan (Misal: Menunggu -> Sedang Dikerjakan -> Selesai).
      */
-    public function updateStatus(Request $request, Transaction $transaction)
+    public function updateStatus(Request $request, $id)
     {
-        // Validasi kepemilikan job
-        if ($transaction->mechanic_id !== Auth::id()) {
-            abort(403);
-        }
-
         $request->validate([
-            'status_code' => 'required|in:in_progress,done'
+            'service_status_id' => 'required|exists:service_statuses,id',
         ]);
 
-        // Mapping status: in_progress = 3, done = 4
-        $statusId = $request->status_code == 'in_progress' ? 3 : 4;
+        $transaction = Transaction::where('id', $id)
+            ->where('mechanic_id', Auth::id())
+            ->firstOrFail();
 
-        $dataToUpdate = ['service_status_id' => $statusId];
+        $transaction->update([
+            'service_status_id' => $request->service_status_id
+        ]);
 
-        // Jika selesai, catat waktu checkout
-        if ($statusId == 4) {
-            $dataToUpdate['check_out_at'] = now();
-        }
-
-        $transaction->update($dataToUpdate);
-
-        $msg = $statusId == 3 ? 'Pekerjaan dimulai! Semangat!' : 'Pekerjaan selesai. Kerja bagus!';
-        
-        return redirect()->route('mechanic.dashboard')->with('success', $msg);
+        return back()->with('success', 'Status pekerjaan berhasil diperbarui!');
     }
 
     /**
-     * Menampilkan riwayat pekerjaan yang SUDAH SELESAI (Status: Done/4).
+     * Halaman Riwayat (Pekerjaan yang sudah selesai/lunas).
      */
     public function history()
     {
-        $historyJobs = Transaction::with(['vehicle', 'customer', 'services'])
+        $jobs = Transaction::with(['customer', 'vehicle'])
             ->where('mechanic_id', Auth::id())
-            ->where('service_status_id', 4) // 4 = Done/Selesai
-            ->orderBy('check_out_at', 'desc') // Yang baru selesai paling atas
-            ->paginate(10);
+            ->where('payment_status_id', 1) // Asumsi ID 1 = Lunas/Selesai
+            ->orderBy('created_at', 'desc')
+            ->get();
 
-        return view('mechanic.jobs.history', compact('historyJobs'));
+        return view('mechanic.jobs.history', compact('jobs'));
     }
 }
