@@ -5,7 +5,6 @@
 @section('content')
 <div class="container-fluid">
 
-    <!-- Page Heading -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">Kelola Transaksi #{{ $transaction->id }}</h1>
         <a href="{{ route('admin.transactions.index') }}" class="btn btn-sm btn-secondary shadow-sm">
@@ -13,7 +12,6 @@
         </a>
     </div>
 
-    <!-- Alert Messages -->
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             {{ session('success') }}
@@ -33,9 +31,7 @@
     @endif
 
     <div class="row">
-        <!-- Kolom Kiri: Detail Utama & Update Status -->
         <div class="col-lg-8">
-            <!-- CARD 1: Detail Utama -->
             <div class="card shadow mb-4">
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                     <h6 class="m-0 font-weight-bold text-primary">Informasi Utama</h6>
@@ -48,12 +44,12 @@
                         <div class="form-group row">
                             <div class="col-md-6">
                                 <label class="small text-gray-600 font-weight-bold">Customer</label>
-                                <input type="text" class="form-control" value="{{ $transaction->customer->name }}" readonly disabled>
+                                <input type="text" class="form-control" value="{{ $transaction->customer->name ?? 'User Terhapus' }}" readonly disabled>
                             </div>
                             <div class="col-md-6">
                                 <label class="small text-gray-600 font-weight-bold">Kendaraan</label>
                                 <input type="text" class="form-control"
-                                    value="{{ $transaction->vehicle->brand }} {{ $transaction->vehicle->model }} ({{ $transaction->vehicle->plate_number }})"
+                                    value="{{ $transaction->vehicle->brand ?? '' }} {{ $transaction->vehicle->model ?? '' }} ({{ $transaction->vehicle->plate_number ?? '-' }})"
                                     readonly disabled>
                             </div>
                         </div>
@@ -65,7 +61,6 @@
 
                         <hr>
                         
-                        <!-- UPDATE STATUS SECTION -->
                         <h6 class="font-weight-bold text-primary mb-3"><i class="fas fa-cogs mr-1"></i> Update Status Pengerjaan</h6>
                         
                         <div class="form-group row">
@@ -110,17 +105,14 @@
                 </div>
             </div>
 
-            <!-- CARD 2: DAFTAR JASA & SPAREPART -->
             <div class="card shadow mb-4">
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                     <h6 class="m-0 font-weight-bold text-primary">Detail Item (Jasa & Sparepart)</h6>
                 </div>
                 <div class="card-body">
                     
-                    <!-- TABEL JASA -->
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <h6 class="font-weight-bold">A. Jasa Service</h6>
-                        <!-- Tombol Trigger Modal Jasa -->
                         <button type="button" class="btn btn-sm btn-primary" data-toggle="modal" data-target="#addServiceModal">
                             <i class="fas fa-plus"></i> Tambah Jasa
                         </button>
@@ -135,12 +127,18 @@
                                 </tr>
                             </thead>
                             <tbody>
+                                {{-- PERBAIKAN: Menggunakan $ts sebagai Service Model, akses harga lewat Pivot --}}
                                 @forelse($transaction->services as $ts)
                                 <tr>
-                                    <td>{{ $ts->service->name }}</td>
-                                    <td class="text-right">Rp {{ number_format($ts->price_at_time, 0, ',', '.') }}</td>
+                                    {{-- Karena ini ManyToMany, $ts adalah Service. Panggil langsung namanya --}}
+                                    <td>{{ $ts->name }}</td>
+                                    
+                                    {{-- Harga ada di tabel pivot --}}
+                                    <td class="text-right">Rp {{ number_format($ts->pivot->price_at_time, 0, ',', '.') }}</td>
+                                    
                                     <td class="text-center">
-                                        <form action="{{ route('admin.transaction-services.destroy', $ts->id) }}" method="POST" class="d-inline">
+                                        {{-- Hapus berdasarkan ID di tabel Pivot (transaction_services) --}}
+                                        <form action="{{ route('admin.transaction-services.destroy', $ts->pivot->id) }}" method="POST" class="d-inline">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Hapus jasa ini?')">
@@ -160,10 +158,8 @@
 
                     <hr>
 
-                    <!-- TABEL SPAREPART -->
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <h6 class="font-weight-bold">B. Sparepart Digunakan</h6>
-                        <!-- Tombol Trigger Modal Sparepart -->
                         <button type="button" class="btn btn-sm btn-primary" data-toggle="modal" data-target="#addSparePartModal">
                             <i class="fas fa-plus"></i> Tambah Sparepart
                         </button>
@@ -180,9 +176,10 @@
                                 </tr>
                             </thead>
                             <tbody>
+                                {{-- Spareparts menggunakan HasMany, jadi cara aksesnya berbeda dengan Services --}}
                                 @forelse($transaction->spareParts as $tsp)
                                 <tr>
-                                    <td>{{ $tsp->sparePart->name }}</td>
+                                    <td>{{ $tsp->sparePart->name ?? 'Item Terhapus' }}</td>
                                     <td class="text-center">{{ $tsp->qty }}</td>
                                     <td class="text-right">Rp {{ number_format($tsp->price_at_time, 0, ',', '.') }}</td>
                                     <td class="text-right">Rp {{ number_format($tsp->price_at_time * $tsp->qty, 0, ',', '.') }}</td>
@@ -208,7 +205,6 @@
             </div>
         </div>
 
-        <!-- Kolom Kanan: Ringkasan Biaya -->
         <div class="col-lg-4">
             <div class="card shadow mb-4">
                 <div class="card-header py-3 bg-success text-white">
@@ -217,7 +213,8 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between mb-2">
                         <span>Total Jasa:</span>
-                        <span class="font-weight-bold">Rp {{ number_format($transaction->services->sum('price_at_time'), 0, ',', '.') }}</span>
+                        {{-- PERBAIKAN: Hitung sum dari pivot --}}
+                        <span class="font-weight-bold">Rp {{ number_format($transaction->services->sum(function($s){ return $s->pivot->price_at_time; }), 0, ',', '.') }}</span>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
                         <span>Total Sparepart:</span>
@@ -229,9 +226,9 @@
                         <h4 class="font-weight-bold text-success">Rp {{ number_format($transaction->total_amount, 0, ',', '.') }}</h4>
                     </div>
 
-                    @if($transaction->payment_status_id == 1) <!-- Jika Lunas -->
-                        <div class="mt-4">
-                            <a href="{{ route('admin.transactions.print', $transaction->id) }}" target="_blank" class="btn btn-dark btn-block">
+                    @if($transaction->payment_status_id == 1) <div class="mt-4">
+                            {{-- Pastikan route print sudah dibuat --}}
+                            <a href="#" class="btn btn-dark btn-block" onclick="alert('Fitur Print belum dihubungkan ke Route')">
                                 <i class="fas fa-print mr-1"></i> Cetak Struk
                             </a>
                         </div>
@@ -247,7 +244,6 @@
 
 </div>
 
-<!-- MODAL TAMBAH JASA -->
 <div class="modal fade" id="addServiceModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
@@ -282,7 +278,6 @@
     </div>
 </div>
 
-<!-- MODAL TAMBAH SPAREPART -->
 <div class="modal fade" id="addSparePartModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
@@ -302,10 +297,10 @@
                             <option value="">-- Pilih Barang --</option>
                             @foreach($spareParts as $sp)
                                 <option value="{{ $sp->id }}">
-                                    {{-- PERBAIKAN DISINI: Ganti $sp->price menjadi $sp->sell_price --}}
+                                    {{-- Sudah diperbaiki menggunakan sell_price sesuai request --}}
                                     {{ $sp->name }} 
                                     - Stok: {{ $sp->stock }} 
-                                    (Rp {{ number_format($sp->sell_price ?? $sp->price ?? 0, 0, ',', '.') }})
+                                    (Rp {{ number_format($sp->sell_price, 0, ',', '.') }})
                                 </option>
                             @endforeach
                         </select>

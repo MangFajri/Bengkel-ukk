@@ -11,6 +11,7 @@ class TransactionService extends Model
     use HasFactory;
 
     protected $table = 'transaction_services';
+    public $timestamps = false;
 
     // --- INI WAJIB ADA AGAR BISA DISIMPAN ---
     protected $fillable = [

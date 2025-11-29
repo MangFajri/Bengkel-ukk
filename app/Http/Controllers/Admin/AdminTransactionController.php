@@ -17,7 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rule; // Tambahkan ini untuk Rule validasi
+use Illuminate\Validation\Rule;
 
 class AdminTransactionController extends Controller
 {
@@ -229,12 +229,13 @@ class AdminTransactionController extends Controller
      */
     public function edit(Transaction $transaction)
     {
-        // Menggunakan load dengan withTrashed untuk relasi master data
+        // PERBAIKAN: Hapus .service pada 'services' karena ini relasi Many-to-Many
+        // 'services' sudah langsung mengembalikan objek Service
         $transaction->load([
             'customer' => function($q) { $q->withTrashed(); }, 
             'vehicle' => function($q) { $q->withTrashed(); }, 
             'mechanic' => function($q) { $q->withTrashed(); },
-            'services.service' => function($q) { $q->withTrashed(); },
+            'services' => function($q) { $q->withTrashed(); }, // <--- INI YG BIKIN ERROR, SUDAH DIPERBAIKI (Hapus .service)
             'spareParts.sparePart' => function($q) { $q->withTrashed(); }
         ]);
         
@@ -335,12 +336,12 @@ class AdminTransactionController extends Controller
      */
     public function print(Transaction $transaction)
     {
-        // Load semua data relasi biar lengkap di struk, handle soft deletes
+        // PERBAIKAN: Sama seperti edit, services jangan pakai .service
         $transaction->load([
             'customer' => function($q) { $q->withTrashed(); },
             'vehicle' => function($q) { $q->withTrashed(); },
             'mechanic' => function($q) { $q->withTrashed(); },
-            'services.service' => function($q) { $q->withTrashed(); },
+            'services' => function($q) { $q->withTrashed(); }, // <--- SUDAH DIPERBAIKI
             'spareParts.sparePart' => function($q) { $q->withTrashed(); },
             'paymentMethod'
         ]);

@@ -10,6 +10,7 @@ class TransactionSparePart extends Model
     use HasFactory;
 
     protected $table = 'transaction_spare_parts';
+    public $timestamps = false;
 
     // --- INI YANG KURANG SEBELUMNYA ---
     protected $fillable = [

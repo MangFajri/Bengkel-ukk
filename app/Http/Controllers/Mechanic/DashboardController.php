@@ -11,19 +11,31 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        // Ambil User ID mekanik yang sedang login
         $userId = Auth::id();
 
-        // Ambil daftar pekerjaan (Transaction) yang ditugaskan ke mekanik ini
-        // Kondisi: mechanic_id = ID user login DAN status pembayaran BELUM LUNAS (id != 1)
-        // Kita asumsikan ID 1 adalah 'Lunas' atau 'Selesai'.
-        $jobs = Transaction::with(['customer', 'vehicle', 'serviceStatus'])
+        // 1. Hitung Statistik untuk Kartu Atas
+        $stats = [
+            'total_active' => Transaction::where('mechanic_id', $userId)
+                                ->where('payment_status_id', '!=', 1) // Belum Lunas
+                                ->count(),
+            
+            'finished'     => Transaction::where('mechanic_id', $userId)
+                                ->where('service_status_id', 4) // Asumsi ID 4 = Selesai
+                                ->count(),
+
+            'today'        => Transaction::where('mechanic_id', $userId)
+                                ->whereDate('created_at', today())
+                                ->count(),
+        ];
+
+        // 2. Ambil 5 Pekerjaan Terbaru saja (untuk tabel ringkasan)
+        $recentJobs = Transaction::with(['customer', 'vehicle', 'serviceStatus'])
             ->where('mechanic_id', $userId)
             ->where('payment_status_id', '!=', 1) 
             ->orderBy('created_at', 'desc')
+            ->limit(5) // Cuma ambil 5 biar dashboard gak penuh
             ->get();
 
-        // Kirim variabel $jobs ke view mechanic.dashboard
-        return view('mechanic.dashboard', compact('jobs'));
+        return view('mechanic.dashboard', compact('stats', 'recentJobs'));
     }
 }

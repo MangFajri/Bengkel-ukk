@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Models\PaymentStatus;
 use App\Models\Service;
+use App\Models\ServiceStatus;
 use App\Models\Transaction;
 use App\Models\TransactionService;
 use App\Models\Vehicle;
@@ -13,13 +15,10 @@ use Illuminate\Support\Facades\DB;
 
 class CustomerTransactionController extends Controller
 {
-    /**
-     * Menampilkan riwayat booking/transaksi customer.
-     */
     public function index()
     {
-        // Ambil transaksi milik user yg login, urutkan dari yang terbaru
-        $transactions = Transaction::with(['vehicle', 'serviceStatus', 'paymentStatus'])
+        // Tambahkan 'services' ke dalam with([])
+        $transactions = Transaction::with(['vehicle', 'serviceStatus', 'services'])
             ->where('customer_id', Auth::id())
             ->latest()
             ->get();
@@ -27,102 +26,104 @@ class CustomerTransactionController extends Controller
         return view('customer.transactions.index', compact('transactions'));
     }
 
-    /**
-     * Menampilkan form booking service baru.
-     */
     public function create()
     {
-        // Ambil mobil milik customer untuk dipilih di form
         $vehicles = Vehicle::where('user_id', Auth::id())->get();
-        
-        // Ambil daftar layanan yang aktif (Ganti Oli, Tune Up, dll)
         $services = Service::where('is_active', true)->get();
 
-        // Cek apakah customer punya mobil? Kalau belum, suruh tambah dulu.
         if ($vehicles->isEmpty()) {
             return redirect()->route('customer.vehicles.create')
-                ->with('error', 'Anda harus menambahkan kendaraan sebelum melakukan booking service.');
+                ->with('error', 'Daftarkan kendaraan dulu sebelum booking.');
         }
 
         return view('customer.transactions.create', compact('vehicles', 'services'));
     }
 
-    /**
-     * Menyimpan data booking service ke database.
-     */
     public function store(Request $request)
     {
-        // 1. Validasi Input
+        // 1. VALIDASI KETAT
         $request->validate([
-            'vehicle_id' => 'required|exists:vehicles,id',
-            'service_ids' => 'required|array|min:1', // Wajib pilih minimal 1 layanan
+            // Pastikan vehicle_id ada DAN milik user yang login
+            'vehicle_id' => [
+                'required',
+                'integer',
+                function ($attribute, $value, $fail) {
+                    $exists = Vehicle::where('id', $value)
+                        ->where('user_id', Auth::id()) // Kunci pengaman disini
+                        ->exists();
+                    if (! $exists) {
+                        $fail('Kendaraan yang dipilih tidak valid atau bukan milik Anda.');
+                    }
+                },
+            ],
+            'service_ids' => 'required|array|min:1',
             'service_ids.*' => 'exists:services,id',
-            'notes' => 'nullable|string|max:500', // Keluhan tambahan
-            'check_in_date' => 'required|date|after_or_equal:today', // Tanggal booking minimal hari ini
+            'notes' => 'nullable|string|max:500',
+            // Tambahkan tanggal booking (opsional, kalau tidak diisi berarti hari ini)
+            'booking_date' => 'nullable|date|after_or_equal:today',
         ]);
 
-        // Pastikan mobil yang dipilih benar-benar milik user ini (Security Check)
-        $vehicleCheck = Vehicle::where('id', $request->vehicle_id)
-            ->where('user_id', Auth::id())
-            ->first();
-
-        if (!$vehicleCheck) {
-            return back()->withErrors(['vehicle_id' => 'Kendaraan tidak valid atau bukan milik Anda.']);
-        }
-
-        // Gunakan DB Transaction biar aman (kalau gagal simpan detail, data utama gak ke-save)
         try {
             DB::beginTransaction();
 
-            // 2. Hitung Estimasi Total Biaya Awal
-            // Kita hitung total harga dari service yang dipilih
+            // 2. Hitung Total Biaya Awal
             $selectedServices = Service::whereIn('id', $request->service_ids)->get();
             $initialTotal = $selectedServices->sum('price');
 
-            // 3. Simpan ke Tabel 'transactions'
+            // 3. Cari ID Status Otomatis (Anti Error ID)
+            $pendingStatus = ServiceStatus::where('code', 'pending')->first();
+            $pendingId = $pendingStatus ? $pendingStatus->id : 1; // Fallback ke 1
+
+            $unpaidStatus = PaymentStatus::where('code', 'unpaid')->first();
+            $unpaidId = $unpaidStatus ? $unpaidStatus->id : 1;
+
+            // 4. Buat Transaksi
+            // Kita pakai field created_at sebagai tanggal booking kalau user tidak isi tanggal
+            $bookingDate = $request->booking_date ?? now();
+
             $transaction = Transaction::create([
+                'code' => 'TRX-'.mt_rand(100000, 999999),
                 'customer_id' => Auth::id(),
                 'vehicle_id' => $request->vehicle_id,
-                'service_status_id' => 2, // ID 2 = 'waiting' (Menunggu Konfirmasi - Sesuai Seeder StatusSeeder)
-                'payment_status_id' => 3, // ID 3 = 'unpaid' (Belum Bayar)
-                'check_in_at' => $request->check_in_date . ' ' . date('H:i:s'), // Gabung tanggal input + jam sekarang
+                'service_status_id' => $pendingId, // Status Pending
+                'payment_status_id' => $unpaidId,  // Status Belum Bayar
+                'payment_method_id' => null,       // Belum pilih metode bayar
                 'notes' => $request->notes,
-                'total_amount' => $initialTotal, // Total sementara (bisa nambah kalau ada sparepart nanti)
+                'total_amount' => $initialTotal,
                 'created_by' => Auth::id(),
+                'created_at' => $bookingDate, // Manipulasi tanggal dibuat sesuai booking
             ]);
 
-            // 4. Simpan Detail Layanan ke Tabel 'transaction_services'
+            // 5. Simpan Detail Services
             foreach ($selectedServices as $service) {
                 TransactionService::create([
                     'transaction_id' => $transaction->id,
                     'service_id' => $service->id,
-                    'price_at_time' => $service->price, // Simpan harga saat ini (penting buat histori harga)
-                    'qty' => 1
+                    'price_at_time' => $service->price,
+                    'qty' => 1,
                 ]);
             }
 
-            DB::commit(); // Simpan semua perubahan
+            DB::commit();
 
             return redirect()->route('customer.transactions.index')
-                ->with('success', 'Booking berhasil dibuat! Mohon tunggu konfirmasi admin.');
+                ->with('success', 'Booking berhasil! Tunggu konfirmasi admin ya.');
 
         } catch (\Exception $e) {
-            DB::rollBack(); // Batalkan semua jika ada error
-            return back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
+            DB::rollBack();
+
+            return back()->with('error', 'Gagal booking: '.$e->getMessage());
         }
     }
 
-    /**
-     * Menampilkan detail transaksi/booking.
-     */
     public function show(Transaction $transaction)
     {
-        // Security: Cek kepemilikan
         if ($transaction->customer_id !== Auth::id()) {
             abort(403);
         }
 
-        $transaction->load(['vehicle', 'serviceStatus', 'paymentStatus', 'services', 'spareParts']);
+        // Load relasi yang diperlukan
+        $transaction->load(['vehicle', 'serviceStatus', 'services', 'spareParts']);
 
         return view('customer.transactions.show', compact('transaction'));
     }

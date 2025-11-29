@@ -146,5 +146,15 @@ Route::middleware(['auth', 'role:customer'])->prefix('customer')->name('customer
     Route::resource('vehicles', CustomerVehicleController::class);
 });
 
+// --- RUTE PERBAIKAN DATABASE (HAPUS SETELAH DIPAKAI) ---
+Route::get('/fix-data', function () {
+    // 1. Ubah semua transaksi jadi PAID (Lunas - ID 2)
+    \App\Models\Transaction::query()->update(['payment_status_id' => 2]);
+    
+    // 2. Ubah semua transaksi jadi DONE (Selesai - ID 4)
+    \App\Models\Transaction::query()->update(['service_status_id' => 4]);
+
+    return "Data Transaksi Berhasil Diperbaiki! Silakan cek Dashboard.";
+});
 // Rute otentikasi yang dibuat oleh Laravel Breeze
 require __DIR__.'/auth.php';

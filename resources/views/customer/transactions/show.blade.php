@@ -6,24 +6,28 @@
     <div class="row">
         <div class="col-12">
             <div class="card shadow mb-4">
-                <!-- Card Header -->
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                     <h6 class="m-0 font-weight-bold text-primary">Detail Transaksi #TRX-{{ $transaction->id }}</h6>
                     <a href="{{ route('customer.transactions.index') }}" class="btn btn-secondary btn-sm">Kembali ke Riwayat</a>
                 </div>
-                <!-- Card Body -->
                 <div class="card-body">
                     {{-- Informasi Utama --}}
                     <div class="row mb-4">
                         <div class="col-md-6">
-                            <strong>Tanggal Masuk:</strong> {{ $transaction->check_in_at->format('d F Y, H:i') }} <br>
-                            <strong>Status Servis:</strong> <span class="badge badge-info">{{ $transaction->serviceStatus->label }}</span> <br>
-                            <strong>Status Pembayaran:</strong> <span class="badge badge-success">{{ $transaction->paymentStatus->label }}</span>
+                            {{-- PENTING: Pastikan casts datetime sudah ada di Model Transaction --}}
+                            <strong>Tanggal Masuk:</strong> {{ $transaction->check_in_at ? $transaction->check_in_at->format('d F Y, H:i') : '-' }} <br>
+                            
+                            {{-- Gunakan optional() atau null coalescing agar tidak error jika relasi kosong --}}
+                            <strong>Status Servis:</strong> 
+                            <span class="badge badge-info">{{ $transaction->serviceStatus->label ?? 'Pending' }}</span> <br>
+                            
+                            <strong>Status Pembayaran:</strong> 
+                            <span class="badge badge-success">{{ $transaction->paymentStatus->label ?? '-' }}</span>
                         </div>
                         <div class="col-md-6 text-md-right">
-                            <strong>Kendaraan:</strong> {{ $transaction->vehicle->brand }} {{ $transaction->vehicle->model }}<br>
-                            <strong>No. Polisi:</strong> {{ $transaction->vehicle->plate_number }}<br>
-                            <strong>Mekanik:</strong> {{ $transaction->mechanic->name ?? 'N/A' }}
+                            <strong>Kendaraan:</strong> {{ $transaction->vehicle->brand ?? '' }} {{ $transaction->vehicle->model ?? '' }}<br>
+                            <strong>No. Polisi:</strong> {{ $transaction->vehicle->plate_number ?? '-' }}<br>
+                            <strong>Mekanik:</strong> {{ $transaction->mechanic->name ?? 'Belum Ditentukan' }}
                         </div>
                     </div>
 
@@ -40,12 +44,17 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach ($transaction->transactionServices as $detail)
+                                {{-- PERBAIKAN 1: Gunakan 'services' (sesuai nama fungsi di Model) --}}
+                                @forelse ($transaction->services as $service)
                                     <tr>
-                                        <td>{{ $detail->service->name }}</td>
-                                        <td class="text-right">Rp {{ number_format($detail->price_at_time, 0, ',', '.') }}</td>
+                                        {{-- Karena Many-to-Many, objeknya langsung $service --}}
+                                        <td>{{ $service->name }}</td>
+                                        {{-- Harga ada di tabel pivot --}}
+                                        <td class="text-right">Rp {{ number_format($service->pivot->price_at_time, 0, ',', '.') }}</td>
                                     </tr>
-                                @endforeach
+                                @empty
+                                    <tr><td colspan="2" class="text-center text-muted">Tidak ada jasa yang dipilih</td></tr>
+                                @endforelse
                             </tbody>
                         </table>
                     </div>
@@ -63,10 +72,12 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach ($transaction->transactionSpareParts as $detail)
+                                {{-- PERBAIKAN 2: Gunakan 'spareParts' (sesuai nama fungsi di Model) --}}
+                                @forelse ($transaction->spareParts as $detail)
                                     <tr>
                                         <td>
-                                            {{ $detail->sparePart->name }}
+                                            {{-- Relasi ke tabel spare_parts dari detail transaksi --}}
+                                            {{ $detail->sparePart->name ?? 'Item Terhapus' }}
                                             @if($detail->serial_number)
                                                 <small class="d-block text-muted">No. Seri: {{ $detail->serial_number }}</small>
                                             @endif
@@ -75,7 +86,9 @@
                                         <td class="text-right">Rp {{ number_format($detail->price_at_time, 0, ',', '.') }}</td>
                                         <td class="text-right">Rp {{ number_format($detail->price_at_time * $detail->qty, 0, ',', '.') }}</td>
                                     </tr>
-                                @endforeach
+                                @empty
+                                    <tr><td colspan="4" class="text-center text-muted">Tidak ada sparepart tambahan</td></tr>
+                                @endforelse
                             </tbody>
                         </table>
                     </div>
@@ -91,11 +104,11 @@
                                         <th>Subtotal</th>
                                         <td class="text-right">Rp {{ number_format($transaction->total_amount, 0, ',', '.') }}</td>
                                     </tr>
-                                    @if($transaction->promo)
+                                    {{-- Cek jika relasi promo ada --}}
+                                    @if($transaction->promo_id && $transaction->promo)
                                     <tr>
                                         <th>Diskon ({{ $transaction->promo->name }})</th>
-                                        {{-- Logika diskon bisa lebih kompleks, ini contoh sederhana --}}
-                                        <td class="text-right text-danger">- Rp ...</td>
+                                        <td class="text-right text-danger">-</td>
                                     </tr>
                                     @endif
                                     <tr class="font-weight-bold">

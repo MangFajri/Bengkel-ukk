@@ -12,27 +12,37 @@ class JobController extends Controller
 {
     /**
      * Tampilkan daftar pekerjaan SAYA SAJA (Active Jobs).
+     * Digunakan jika kamu mengakses route /mechanic/jobs
      */
     public function index()
     {
-        // Ambil transaksi dimana mechanic_id adalah user yang login
-        // DAN status pembayarannya belum lunas (artinya masih proses pengerjaan)
-        $jobs = Transaction::with(['customer', 'vehicle', 'serviceStatus'])
+        $jobs = Transaction::with([
+                'customer' => function($q) { $q->withTrashed(); }, 
+                'vehicle' => function($q) { $q->withTrashed(); },
+                'serviceStatus'
+            ])
             ->where('mechanic_id', Auth::id())
-            ->where('payment_status_id', '!=', 1) // Asumsi ID 1 = Lunas/Selesai total
+            ->where('payment_status_id', '!=', 1) 
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->paginate(10); // Pakai paginate biar halaman tidak panjang ke bawah
 
-        return view('mechanic.dashboard', compact('jobs'));
+        // PERBAIKAN: Arahkan ke view 'mechanic.jobs.index', BUKAN 'mechanic.dashboard'
+        return view('mechanic.jobs.index', compact('jobs'));
     }
 
     /**
-     * Tampilkan detail satu pekerjaan.
+     * Tampilkan detail satu pekerjaan (Saat klik tombol "Kerjakan").
      */
     public function show($id)
     {
         // Validasi: Pastikan job ini punya saya
-        $transaction = Transaction::with(['services', 'spareParts', 'customer', 'vehicle'])
+        $transaction = Transaction::with([
+                'services', 
+                'spareParts', 
+                // PENTING: withTrashed() mencegah error "property name on null"
+                'customer' => function($q) { $q->withTrashed(); }, 
+                'vehicle' => function($q) { $q->withTrashed(); }
+            ])
             ->where('id', $id)
             ->where('mechanic_id', Auth::id())
             ->firstOrFail(); // 404 jika mencoba akses job orang lain
@@ -67,12 +77,19 @@ class JobController extends Controller
      */
     public function history()
     {
-        $jobs = Transaction::with(['customer', 'vehicle'])
+        // PERBAIKAN: Nama variabel disesuaikan dengan View ($historyJobs)
+        $historyJobs = Transaction::with([
+                'customer' => function($q) { $q->withTrashed(); }, 
+                'vehicle' => function($q) { $q->withTrashed(); }
+            ])
             ->where('mechanic_id', Auth::id())
-            ->where('payment_status_id', 1) // Asumsi ID 1 = Lunas/Selesai
+            // Asumsi: Job masuk history kalau status servis 'Selesai' (ID 4) atau Bayar Lunas (ID 1)
+            // Sesuaikan logika ini dengan maumu. Biasanya patokannya Status Service = Selesai.
+            ->where('service_status_id', 4) 
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->paginate(10); // Pakai paginate biar halaman history rapi
 
-        return view('mechanic.jobs.history', compact('jobs'));
+        // Kirim dengan nama 'historyJobs' agar cocok dengan blade
+        return view('mechanic.jobs.history', compact('historyJobs'));
     }
 }

@@ -5,56 +5,93 @@
 @section('content')
 <div class="container-fluid">
 
-    <!-- Page Heading -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Tugas Saya (Active Jobs)</h1>
+        <h1 class="h3 mb-0 text-white font-weight-bold">Dashboard & Statistik</h1>
     </div>
 
-    @if(session('success'))
-        <div class="alert alert-success">{{ session('success') }}</div>
-    @endif
+    <div class="row">
 
-    <!-- Tabel Daftar Tugas -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3 bg-primary">
-            <h6 class="m-0 font-weight-bold text-white">Antrian Perbaikan</h6>
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2" style="background-color: #1e293b; border: 1px solid #334155;">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Tugas Aktif (Sekarang)</div>
+                            <div class="h5 mb-0 font-weight-bold text-white">{{ $stats['total_active'] }} Mobil</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-wrench fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2" style="background-color: #1e293b; border: 1px solid #334155;">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Masuk Hari Ini</div>
+                            <div class="h5 mb-0 font-weight-bold text-white">{{ $stats['today'] }} Mobil</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar-day fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2" style="background-color: #1e293b; border: 1px solid #334155;">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Diselesaikan</div>
+                            <div class="h5 mb-0 font-weight-bold text-white">{{ $stats['finished'] }} Mobil</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4" style="background-color: #1e293b; border: 1px solid #334155;">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between" style="background-color: #1e293b; border-bottom: 1px solid #334155;">
+            <h6 class="m-0 font-weight-bold text-white">Pekerjaan Terbaru (Ringkasan)</h6>
+            <a href="{{ route('mechanic.jobs.index') }}" class="btn btn-sm btn-primary">Lihat Semua</a>
         </div>
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-bordered" width="100%" cellspacing="0">
+                <table class="table table-dark table-striped mb-0">
                     <thead>
                         <tr>
-                            <th>Tgl Masuk</th>
                             <th>Kendaraan</th>
-                            <th>Keluhan</th>
-                            <th>Status Saat Ini</th>
+                            <th>Status</th>
                             <th>Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($jobs as $job)
+                        @forelse($recentJobs as $job)
                         <tr>
-                            <td>{{ $job->created_at->format('d M Y H:i') }}</td>
                             <td>
-                                <strong>{{ $job->vehicle->brand }} {{ $job->vehicle->model }}</strong><br>
-                                <span class="text-muted small">{{ $job->vehicle->plate_number }}</span>
-                            </td>
-                            <td>{{ Str::limit($job->notes, 50) }}</td>
-                            <td>
-                                <span class="badge badge-info">{{ $job->serviceStatus->label ?? 'Pending' }}</span>
+                                <strong>{{ $job->vehicle->plate_number }}</strong><br>
+                                <small class="text-gray-400">{{ $job->vehicle->brand }}</small>
                             </td>
                             <td>
-                                <a href="{{ route('mechanic.jobs.show', $job->id) }}" class="btn btn-primary btn-sm">
-                                    <i class="fas fa-tools"></i> Kerjakan
-                                </a>
+                                <span class="badge badge-secondary">{{ $job->serviceStatus->label }}</span>
+                            </td>
+                            <td>
+                                <a href="{{ route('mechanic.jobs.show', $job->id) }}" class="btn btn-info btn-sm">Detail</a>
                             </td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="5" class="text-center text-gray-500 py-4">
-                                <i class="fas fa-mug-hot fa-2x mb-2"></i><br>
-                                Belum ada tugas masuk. Santai dulu, ngopi dulu! ☕
-                            </td>
+                            <td colspan="3" class="text-center">Belum ada tugas.</td>
                         </tr>
                         @endforelse
                     </tbody>

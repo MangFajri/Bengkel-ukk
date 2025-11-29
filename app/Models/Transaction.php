@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Transaction extends Model
@@ -27,6 +28,13 @@ class Transaction extends Model
         'amount_paid',
     ];
 
+    protected $casts = [
+        'check_in_at' => 'datetime',
+        'check_out_at' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+
     // =================================================================
     // RELASI KE PARENT (BelongsTo)
     // =================================================================
@@ -39,7 +47,7 @@ class Transaction extends Model
     {
         // Pastikan nama fungsi sesuai dengan yang dipanggil di Controller/View
         // Kalau di view pakai $transaction->user->name, ganti nama fungsi ini jadi 'user'
-        return $this->belongsTo(User::class, 'customer_id')->withTrashed(); 
+        return $this->belongsTo(User::class, 'customer_id')->withTrashed();
     }
 
     public function mechanic(): BelongsTo
@@ -47,7 +55,7 @@ class Transaction extends Model
         return $this->belongsTo(User::class, 'mechanic_id')->withTrashed();
     }
 
-   /**
+    /**
      * Relasi ke Kendaraan.
      */
     public function vehicle(): BelongsTo
@@ -77,9 +85,10 @@ class Transaction extends Model
     // RELASI KE CHILD (HasMany)
     // =================================================================
 
-    public function services(): HasMany
+    public function services(): BelongsToMany
     {
-        return $this->hasMany(TransactionService::class, 'transaction_id');
+        return $this->belongsToMany(Service::class, 'transaction_services', 'transaction_id', 'service_id')
+            ->withPivot('id', 'qty', 'price_at_time'); // Menyertakan kolom pivot yang diperlukan
     }
 
     public function spareParts(): HasMany
