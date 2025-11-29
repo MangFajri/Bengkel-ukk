@@ -3,141 +3,153 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Invoice #{{ $transaction->id }} - FajriGarage</title>
+    <title>Struk Service #{{ $transaction->id }}</title>
     <style>
         body {
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 14px;
-            color: #333;
+            font-family: 'Courier New', Courier, monospace; /* Font seperti mesin kasir */
+            background-color: #fff;
+            color: #000;
+            padding: 20px;
             max-width: 800px;
             margin: 0 auto;
-            padding: 20px;
         }
         .header {
             text-align: center;
             margin-bottom: 20px;
-            border-bottom: 2px dashed #333;
+            border-bottom: 2px dashed #000;
             padding-bottom: 10px;
         }
         .header h1 { margin: 0; font-size: 24px; text-transform: uppercase; }
-        .header p { margin: 5px 0; font-size: 12px; }
+        .header p { margin: 2px 0; font-size: 14px; }
         
-        .info-table { width: 100%; margin-bottom: 20px; }
-        .info-table td { padding: 3px 0; }
-        .text-right { text-align: right; }
-        .text-bold { font-weight: bold; }
+        .info-table { width: 100%; margin-bottom: 20px; font-size: 14px; }
+        .info-table td { padding: 2px 0; vertical-align: top; }
+        .label { font-weight: bold; width: 120px; }
 
-        .items-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        .items-table th { text-align: left; border-bottom: 1px solid #333; padding: 5px 0; }
-        .items-table td { padding: 5px 0; border-bottom: 1px dashed #ddd; }
-        
-        .totals-table { width: 100%; margin-top: 20px; }
-        .totals-table td { padding: 5px 0; }
-        .grand-total { border-top: 2px solid #333; border-bottom: 2px solid #333; padding: 10px 0; font-size: 18px; }
+        .items-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px; }
+        .items-table th { border-bottom: 2px solid #000; text-align: left; padding: 5px 0; }
+        .items-table td { border-bottom: 1px dashed #ccc; padding: 5px 0; }
+        .text-right { text-align: right; }
+        .font-bold { font-weight: bold; }
+
+        .totals { margin-top: 20px; text-align: right; font-size: 16px; }
+        .grand-total { font-size: 20px; font-weight: bold; border-top: 2px solid #000; padding-top: 10px; margin-top: 5px; }
 
         .footer {
-            text-align: center;
             margin-top: 40px;
+            text-align: center;
             font-size: 12px;
-            border-top: 1px solid #eee;
+            border-top: 1px solid #ccc;
             padding-top: 10px;
         }
 
-        /* Hapus elemen lain saat diprint */
+        /* Agar tombol print tidak ikut ter-print */
         @media print {
             .no-print { display: none; }
-            body { padding: 0; margin: 0; }
+        }
+        .btn-print {
+            background: #007bff; color: white; padding: 10px 20px; 
+            text-decoration: none; border-radius: 5px; display: inline-block; margin-bottom: 20px;
         }
     </style>
 </head>
 <body>
 
-    <!-- Tombol Print (Akan hilang saat diprint) -->
-    <div class="no-print" style="margin-bottom: 20px; text-align: right;">
-        <button onclick="window.print()" style="padding: 10px 20px; background: #333; color: #fff; border: none; cursor: pointer;">Cetak Struk</button>
-        <button onclick="window.close()" style="padding: 10px 20px; background: #ccc; border: none; cursor: pointer;">Tutup</button>
+    <div class="text-right no-print">
+        <a href="#" onclick="window.print()" class="btn-print">🖨️ Cetak Struk</a>
     </div>
 
     <div class="header">
-        <h1>FAJRI GARAGE</h1>
-        <p>Jl. Raya Bengkel No. 99, Sidoarjo, Jawa Timur</p>
+        <h1>GARAGE</h1>
+        <p>Jl. Koding No. 404, Error City</p>
         <p>Telp: 0812-3456-7890</p>
     </div>
 
     <table class="info-table">
         <tr>
-            <td>No. Faktur: <strong>#INV-{{ str_pad($transaction->id, 5, '0', STR_PAD_LEFT) }}</strong></td>
-            <td class="text-right">Tanggal: {{ date('d/m/Y H:i', strtotime($transaction->created_at)) }}</td>
+            <td class="label">No. Transaksi</td>
+            <td>: #{{ $transaction->id }}</td>
+            <td class="label">Tanggal</td>
+            <td>: {{ $transaction->created_at->format('d/m/Y H:i') }}</td>
         </tr>
         <tr>
-            <td>Pelanggan: {{ $transaction->customer->name }}</td>
-            <td class="text-right">Mekanik: {{ $transaction->mechanic->name ?? '-' }}</td>
+            <td class="label">Pelanggan</td>
+            <td>: {{ $transaction->customer->name ?? 'Umum/Terhapus' }}</td>
+            <td class="label">Mekanik</td>
+            <td>: {{ $transaction->mechanic->name ?? '-' }}</td>
         </tr>
         <tr>
-            <td>Kendaraan: {{ $transaction->vehicle->brand }} {{ $transaction->vehicle->model }}</td>
-            <td class="text-right">Plat: {{ $transaction->vehicle->plate_number }}</td>
+            <td class="label">Kendaraan</td>
+            <td colspan="3">: 
+                @if($transaction->vehicle)
+                    {{ $transaction->vehicle->plate_number }} - {{ $transaction->vehicle->brand }} {{ $transaction->vehicle->model }}
+                @else
+                    -
+                @endif
+            </td>
+        </tr>
+        <tr>
+            <td class="label">Status</td>
+            <td colspan="3">: 
+                @if(($transaction->paymentStatus->code ?? '') == 'paid')
+                    [LUNAS]
+                @else
+                    [BELUM LUNAS]
+                @endif
+                - {{ $transaction->serviceStatus->name ?? 'Selesai' }}
+            </td>
         </tr>
     </table>
 
     <table class="items-table">
         <thead>
             <tr>
-                <th>Deskripsi</th>
-                <th class="text-right">Harga</th>
-                <th class="text-right">Qty</th>
-                <th class="text-right">Subtotal</th>
+                <th width="50%">Keterangan</th>
+                <th width="15%" class="text-right">Qty</th>
+                <th width="35%" class="text-right">Harga</th>
             </tr>
         </thead>
         <tbody>
-            <!-- JASA -->
-            @foreach($transaction->services as $svc)
+            @foreach($transaction->services as $item)
             <tr>
-                <td>Jasa: {{ $svc->service->name }}</td>
-                <td class="text-right">{{ number_format($svc->price_at_time, 0, ',', '.') }}</td>
-                <td class="text-right">{{ $svc->qty }}</td>
-                <td class="text-right">{{ number_format($svc->price_at_time * $svc->qty, 0, ',', '.') }}</td>
+                <td>
+                    {{ $item->service->name ?? 'Jasa (Terhapus)' }}
+                    <div style="font-size: 10px; color: #555;">*Jasa Service</div>
+                </td>
+                <td class="text-right">1</td>
+                <td class="text-right">Rp {{ number_format($item->price_at_time ?? $item->service->price, 0, ',', '.') }}</td>
             </tr>
             @endforeach
 
-            <!-- SPAREPART -->
             @foreach($transaction->spareParts as $part)
             <tr>
-                <td>Part: {{ $part->sparePart->name }}</td>
-                <td class="text-right">{{ number_format($part->price_at_time, 0, ',', '.') }}</td>
+                <td>
+                    {{ $part->sparePart->name ?? 'Barang (Terhapus)' }}
+                    <div style="font-size: 10px; color: #555;">*Sparepart</div>
+                </td>
                 <td class="text-right">{{ $part->qty }}</td>
-                <td class="text-right">{{ number_format($part->price_at_time * $part->qty, 0, ',', '.') }}</td>
+                <td class="text-right">Rp {{ number_format(($part->price_at_time ?? $part->sparePart->sell_price) * $part->qty, 0, ',', '.') }}</td>
             </tr>
             @endforeach
         </tbody>
     </table>
 
-    <table class="totals-table">
-        <tr>
-            <td style="width: 60%;"></td>
-            <td>Subtotal</td>
-            <td class="text-right">{{ number_format($transaction->total_amount, 0, ',', '.') }}</td>
-        </tr>
-        <tr>
-            <td></td>
-            <td class="text-bold grand-total">TOTAL BAYAR</td>
-            <td class="text-right text-bold grand-total">Rp {{ number_format($transaction->total_amount, 0, ',', '.') }}</td>
-        </tr>
-        <tr>
-            <td></td>
-            <td>Metode Bayar</td>
-            <td class="text-right">{{ $transaction->paymentMethod->name ?? 'Tunai' }}</td>
-        </tr>
-    </table>
+    <div class="totals">
+        <div class="grand-total">
+            Total Biaya: Rp {{ number_format($transaction->total_amount, 0, ',', '.') }}
+        </div>
+    </div>
 
     <div class="footer">
         <p>Terima kasih atas kepercayaan Anda.</p>
-        <p>Barang yang sudah dibeli tidak dapat dikembalikan.</p>
-        <p>-- Fajri Garage --</p>
+        <p>Garansi service 1 minggu dengan membawa struk ini.</p>
     </div>
 
     <script>
-        // Otomatis print saat halaman dibuka
-        window.onload = function() { window.print(); }
+        // Otomatis muncul popup print saat halaman dibuka
+        window.onload = function() {
+            window.print();
+        }
     </script>
 </body>
 </html>

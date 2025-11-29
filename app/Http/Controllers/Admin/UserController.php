@@ -38,6 +38,16 @@ class UserController extends Controller
     {
        $validatedData = $request->validated();
         
+        // --- LOGIKA TAMBAHAN (SOLUSI SOFT DELETE) ---
+        // Cek apakah ada user 'sampah' (soft deleted) dengan email ini?
+        $trashedUser = User::onlyTrashed()->where('email', $request->email)->first();
+
+        if ($trashedUser) {
+            // Hapus permanen data lama agar emailnya bisa dipakai user baru ini
+            $trashedUser->forceDelete();
+        }
+        // --------------------------------------------
+
         // Handle checkbox
         $validatedData['is_active'] = $request->has('is_active');
         
@@ -51,19 +61,10 @@ class UserController extends Controller
     }
 
     /**
-     * Display the specified resource.
-     */
-    public function show(User $user)
-    {
-        //
-    }
-
-    /**
      * Show the form for editing the specified resource.
      */
     public function edit(User $user)
     {
-        // mengirim data user yang mau diedit ke view edit
         return view('admin.users.edit', compact('user'));
     }
 

@@ -38,6 +38,18 @@ class VehicleController extends Controller
      */
     public function store(StoreVehicleRequest $request)
     {
+        // === [START LOGIKA SOFT DELETE] ===
+        // Cek apakah ada kendaraan 'sampah' (soft deleted) dengan plat nomor ini?
+        $trashedVehicle = Vehicle::onlyTrashed()
+            ->where('plate_number', $request->plate_number)
+            ->first();
+
+        if ($trashedVehicle) {
+            // Hapus permanen data lama agar plat nomor bisa dipakai lagi oleh data baru ini
+            $trashedVehicle->forceDelete();
+        }
+        // === [END LOGIKA SOFT DELETE] ===
+
         Vehicle::create($request->validated());
 
         return redirect()->route('admin.vehicles.index')->with('success', 'Kendaraan baru berhasil ditambahkan.');
@@ -79,12 +91,16 @@ class VehicleController extends Controller
      */
     public function destroy(Vehicle $vehicle)
     {
-         // Hati-hati: Ini adalah penghapusan permanen
+        // Karena kita sudah pakai SoftDeletes di Model, $vehicle->delete() ini aman.
+        // Dia hanya akan mengisi kolom deleted_at, tidak menghapus baris dari database.
+        // Jadi catch QueryException di bawah sebenarnya jarang terjadi kalau soft delete aktif,
+        // tapi bagus dipertahankan untuk jaga-jaga (defensive programming).
+        
         try {
             $vehicle->delete();
             return redirect()->route('admin.vehicles.index')->with('success', 'Data Kendaraan berhasil dihapus.');
         } catch (\Illuminate\Database\QueryException $e) {
-            // Menangkap error jika kendaraan masih terhubung dengan transaksi
+            // Menangkap error jika kendaraan masih terhubung dengan transaksi (jika hard delete)
             return redirect()->route('admin.vehicles.index')->with('error', 'Data Kendaraan tidak bisa dihapus karena masih terhubung dengan data transaksi.');
         }
     }

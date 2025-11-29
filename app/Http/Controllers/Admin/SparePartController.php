@@ -13,7 +13,7 @@ class SparePartController extends Controller
     /**
      * Display a listing of the resource.
      */
-     public function index()
+    public function index()
     {
         // Mengambil semua data sparepart, diurutkan dari yang terbaru, paginasi 10 item per halaman
         $spareParts = SparePart::latest()->paginate(10);
@@ -36,6 +36,17 @@ class SparePartController extends Controller
     public function store(StoreSparePartRequest $request)
     {
         $validatedData = $request->validated();
+        
+        // === [START PERUBAHAN] ===
+        // Cek apakah ada sparepart 'sampah' (soft deleted) dengan SKU ini?
+        $trashedPart = SparePart::onlyTrashed()->where('sku', $request->sku)->first();
+
+        if ($trashedPart) {
+            // Hapus permanen data lama agar SKU-nya bisa dipakai sparepart baru ini
+            $trashedPart->forceDelete();
+        }
+        // === [END PERUBAHAN] ===
+
         $validatedData['is_active'] = $request->has('is_active');
 
         SparePart::create($validatedData);
@@ -56,7 +67,7 @@ class SparePartController extends Controller
      */
     public function edit(SparePart $sparePart)
     {
-        // Mengirim data  sparepart yang mau di edit ke view
+        // Mengirim data sparepart yang mau di edit ke view
         return view('admin.spare-parts.edit', compact('sparePart'));
     }
 
@@ -85,6 +96,5 @@ class SparePartController extends Controller
 
         // Redirect kembali ke halaman daftar dengan pesan sukses
         return redirect()->route('admin.spare-parts.index')->with('success', 'Data Sparepart berhasil dihapus.');
-
     }
 }

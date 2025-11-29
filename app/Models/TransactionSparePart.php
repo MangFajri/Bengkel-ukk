@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class TransactionSparePart extends Model
 {
     use HasFactory;
@@ -25,8 +25,8 @@ class TransactionSparePart extends Model
         return $this->belongsTo(Transaction::class);
     }
 
-    public function sparePart()
+    public function sparePart(): BelongsTo
     {
-        return $this->belongsTo(SparePart::class);
+        return $this->belongsTo(SparePart::class, 'spare_part_id')->withTrashed();
     }
 }

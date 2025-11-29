@@ -31,19 +31,28 @@ class Transaction extends Model
     // RELASI KE PARENT (BelongsTo)
     // =================================================================
 
+    /**
+     * Relasi ke Customer (User).
+     * Menggunakan withTrashed() agar riwayat tidak error jika user dihapus.
+     */
     public function customer(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'customer_id');
+        // Pastikan nama fungsi sesuai dengan yang dipanggil di Controller/View
+        // Kalau di view pakai $transaction->user->name, ganti nama fungsi ini jadi 'user'
+        return $this->belongsTo(User::class, 'customer_id')->withTrashed(); 
     }
 
     public function mechanic(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'mechanic_id');
+        return $this->belongsTo(User::class, 'mechanic_id')->withTrashed();
     }
 
+   /**
+     * Relasi ke Kendaraan.
+     */
     public function vehicle(): BelongsTo
     {
-        return $this->belongsTo(Vehicle::class, 'vehicle_id');
+        return $this->belongsTo(Vehicle::class, 'vehicle_id')->withTrashed();
     }
 
     public function serviceStatus(): BelongsTo

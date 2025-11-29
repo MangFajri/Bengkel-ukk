@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TransactionService extends Model
 {
@@ -25,8 +26,8 @@ class TransactionService extends Model
         return $this->belongsTo(Transaction::class);
     }
 
-    public function service()
+    public function service(): BelongsTo
     {
-        return $this->belongsTo(Service::class);
+        return $this->belongsTo(Service::class, 'service_id')->withTrashed();
     }
 }

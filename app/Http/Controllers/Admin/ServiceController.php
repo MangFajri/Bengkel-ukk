@@ -7,9 +7,10 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreServiceRequest;
 use App\Http\Requests\UpdateServiceRequest;
+
 class ServiceController extends Controller
 {
-     /**
+    /**
      * Menampilkan daftar semua Jasa (Services).
      */
     public function index()
@@ -38,8 +39,22 @@ class ServiceController extends Controller
         // Mengambil data yang sudah divalidasi oleh StoreServiceRequest
         $validatedData = $request->validated();
         
+        // === [START LOGIKA SOFT DELETE] ===
+        // Cek hanya jika 'code' diisi (karena code bisa null)
+        if ($request->filled('code')) {
+            // Cari di tong sampah apakah ada jasa dengan kode yang sama
+            $trashedService = Service::onlyTrashed()
+                ->where('code', $request->code)
+                ->first();
+
+            if ($trashedService) {
+                // Hapus permanen data sampah agar kode-nya bisa dipakai lagi
+                $trashedService->forceDelete();
+            }
+        }
+        // === [END LOGIKA SOFT DELETE] ===
+        
         // Menangani checkbox 'is_active'
-        // Jika checkbox tidak dicentang, nilainya tidak akan dikirim. Kita set default ke 0 (false).
         $validatedData['is_active'] = $request->has('is_active');
 
         // Membuat record baru di database
@@ -48,6 +63,7 @@ class ServiceController extends Controller
         // Redirect kembali ke halaman daftar jasa dengan pesan sukses
         return redirect()->route('admin.services.index')->with('success', 'Data Jasa berhasil ditambahkan.');
     }
+
     /**
      * Display the specified resource.
      */
@@ -56,9 +72,8 @@ class ServiceController extends Controller
         //
     }
 
-     /**
+    /**
      * Show the form for editing the specified resource.
-     * Laravel akan otomatis mencari Service berdasarkan ID di URL.
      */
     public function edit(Service $service)
     {
@@ -84,7 +99,7 @@ class ServiceController extends Controller
         return redirect()->route('admin.services.index')->with('success', 'Data Jasa berhasil diperbarui.');
     }
 
-     /**
+    /**
      * Remove the specified resource from storage.
      */
     public function destroy(Service $service)
