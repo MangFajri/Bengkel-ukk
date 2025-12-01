@@ -286,7 +286,7 @@
 
             <div class="h-96 lg:h-auto bg-slate-800 relative group">
                 <iframe
-                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3957.692023960667!2d112.71508!3d-7.2758!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zN8KwMTYnMzIuOSJTIDExMsKwNDInNTQuMyJF!5e0!3m2!1sen!2sid!4v1620000000000!5m2!1sen!2sid"
+                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3956.270497365346!2d112.7131219740442!3d-7.435267673246464!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2dd7e6a314065217%3A0xc7023c8798744760!2sAlun-Alun%20Sidoarjo!5e0!3m2!1sid!2sid!4v1701360000000!5m2!1sid!2sid"
                     width="100%" height="100%" style="border:0; filter: grayscale(100%) invert(92%) contrast(83%);"
                     allowfullscreen="" loading="lazy"
                     class="absolute inset-0 w-full h-full group-hover:filter-none transition duration-700">

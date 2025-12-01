@@ -5,7 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\PaymentStatus;
 use App\Models\Transaction;
-use App\Models\User; // Pastikan ini ada
+use App\Models\User;
+use App\Models\ServiceStatus; // <-- Tambah ini
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -14,13 +15,10 @@ class DashboardController extends Controller
     public function index()
     {
         // --- LOGIKA PENCARIAN ID OTOMATIS (ANTI BUG) ---
-        // Kita tanya database: "Status 'paid' itu ID-nya berapa sih?"
         $paidStatus = PaymentStatus::where('code', 'paid')->first();
-
-        // Kalau ketemu pakai ID-nya, kalau tidak ketemu pakai default 1 (sesuai Tinker kamu)
         $paidId = $paidStatus ? $paidStatus->id : 1;
 
-        // 1. Total Pendapatan (Pakai $paidId yang sudah kita cari)
+        // 1. Total Pendapatan
         $revenue = Transaction::where('payment_status_id', $paidId)->sum('total_amount');
 
         // 2. Jumlah Transaksi Bulan Ini
@@ -32,7 +30,6 @@ class DashboardController extends Controller
         $totalCustomers = User::where('role', 'customer')->count();
 
         // 4. Pekerjaan Pending (Booking, Confirmed, Working)
-        // Kita anggap status service 1, 2, 3 adalah proses pending
         $pendingJobs = Transaction::whereIn('service_status_id', [1, 2, 3])->count();
 
         // 5. Transaksi Terbaru
@@ -41,12 +38,12 @@ class DashboardController extends Controller
             ->take(5)
             ->get();
 
-        // 6. Grafik Pendapatan Bulanan (Juga pakai $paidId)
+        // 6. Grafik Pendapatan Bulanan
         $monthlyRevenue = Transaction::select(
             DB::raw('MONTH(created_at) as month'),
             DB::raw('SUM(total_amount) as total')
         )
-            ->where('payment_status_id', $paidId) // <--- PENTING: Pakai ID yang benar
+            ->where('payment_status_id', $paidId)
             ->whereYear('created_at', date('Y'))
             ->groupBy('month')
             ->pluck('total', 'month')
@@ -57,17 +54,33 @@ class DashboardController extends Controller
             $chartData[] = $monthlyRevenue[$i] ?? 0;
         }
 
-        // --- TAMBAHAN: 7. Sparepart Terlaris (Top 5) ---
-        // Logic: Join Pivot -> Transaction (cek lunas) -> Sparepart (ambil nama)
+        // 7. Sparepart Terlaris (Top 5)
         $topSpareparts = DB::table('transaction_spare_parts')
             ->join('transactions', 'transaction_spare_parts.transaction_id', '=', 'transactions.id')
             ->join('spare_parts', 'transaction_spare_parts.spare_part_id', '=', 'spare_parts.id')
-            ->where('transactions.payment_status_id', $paidId) // Hanya hitung transaksi LUNAS
+            ->where('transactions.payment_status_id', $paidId)
             ->select('spare_parts.name', DB::raw('SUM(transaction_spare_parts.qty) as total_sold'))
             ->groupBy('spare_parts.id', 'spare_parts.name')
             ->orderByDesc('total_sold')
             ->limit(5)
             ->get();
+
+        // --- [BARU] 8. Data Pie Chart (Komposisi Status Service) ---
+        // Kita hitung berapa yg selesai, pending, batal, dll.
+        $statusStats = Transaction::select('service_status_id', DB::raw('count(*) as total'))
+            ->groupBy('service_status_id')
+            ->pluck('total', 'service_status_id')
+            ->toArray();
+        
+        // Mapping data agar urut sesuai label chart nanti (1: Booking, 2: Menunggu, 3: Proses, 4: Selesai, 5: Batal)
+        // Sesuaikan urutan array ini dengan urutan label di JS View nanti
+        $pieData = [
+            $statusStats[1] ?? 0, // Booking
+            $statusStats[2] ?? 0, // Menunggu
+            $statusStats[3] ?? 0, // Proses
+            $statusStats[4] ?? 0, // Selesai
+            $statusStats[5] ?? 0  // Batal
+        ];
 
         return view('admin.dashboard', compact(
             'revenue',
@@ -76,7 +89,8 @@ class DashboardController extends Controller
             'pendingJobs',
             'recentTransactions',
             'chartData',
-            'topSpareparts' // <--- Jangan lupa kirim ini ke view
+            'topSpareparts',
+            'pieData' // <-- Kirim data pie chart
         ));
     }
 }

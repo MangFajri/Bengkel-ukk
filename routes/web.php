@@ -1,30 +1,27 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Auth;
-
-// --- CONTROLLERS ADMIN ---
+use App\Http\Controllers\Admin\ActivityLogController;
+use App\Http\Controllers\Admin\AdminTransactionController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+// --- CONTROLLERS ADMIN ---
+use App\Http\Controllers\Admin\PaymentMethodController;
+use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\SparePartController;
-use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Admin\VehicleController;
-use App\Http\Controllers\Admin\ActivityLogController;
-use App\Http\Controllers\Admin\PaymentMethodController;
-use App\Http\Controllers\Admin\AdminTransactionController;
 use App\Http\Controllers\Admin\TransactionServiceController;
 use App\Http\Controllers\Admin\TransactionSparePartController;
-
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\VehicleController;
+use App\Http\Controllers\Customer\CustomerTransactionController;
+use App\Http\Controllers\Customer\DashboardController as CustomerDashboardController;
+use App\Http\Controllers\Customer\VehicleController as CustomerVehicleController;
 // --- CONTROLLERS MEKANIK ---
 use App\Http\Controllers\Mechanic\DashboardController as MechanicDashboardController;
 use App\Http\Controllers\Mechanic\JobController;
-
 // --- CONTROLLERS CUSTOMER ---
-use App\Http\Controllers\Customer\DashboardController as CustomerDashboardController;
-use App\Http\Controllers\Customer\VehicleController as CustomerVehicleController;
-use App\Http\Controllers\Customer\CustomerTransactionController;
-
+use App\Http\Controllers\ProfileController;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -40,12 +37,18 @@ Route::get('/', function () {
 // Rute Dashboard Utama (Redirect sesuai Role)
 Route::get('/dashboard', function () {
     $user = Auth::user();
-    if ($user->role === 'admin') return redirect()->route('admin.dashboard');
-    if ($user->role === 'mechanic') return redirect()->route('mechanic.dashboard');
-    if ($user->role === 'customer') return redirect()->route('customer.dashboard');
+    if ($user->role === 'admin') {
+        return redirect()->route('admin.dashboard');
+    }
+    if ($user->role === 'mechanic') {
+        return redirect()->route('mechanic.dashboard');
+    }
+    if ($user->role === 'customer') {
+        return redirect()->route('customer.dashboard');
+    }
+
     return redirect('/');
 })->middleware(['auth', 'verified'])->name('dashboard');
-
 
 // Profil (Breeze Default)
 Route::middleware('auth')->group(function () {
@@ -54,12 +57,11 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-
 // =================================================================
 // 1. GRUP RUTE ADMIN
 // =================================================================
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
-    
+
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
     // Master Data
@@ -71,7 +73,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
     // Transaksi Utama
     Route::resource('transactions', AdminTransactionController::class);
-    
+
     // Fitur Bayar & Cetak
     Route::post('transactions/{transaction}/pay', [AdminTransactionController::class, 'updatePaymentStatus'])->name('transactions.updatePayment');
     Route::get('transactions/{transaction}/print', [AdminTransactionController::class, 'print'])->name('transactions.print');
@@ -82,11 +84,13 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
     Route::post('transaction-spare-parts', [TransactionSparePartController::class, 'store'])->name('transaction-spareparts.store');
     Route::delete('transaction-spare-parts/{id}', [TransactionSparePartController::class, 'destroy'])->name('transaction-spareparts.destroy');
-    
+
+    // Rute Laporan
+    Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+
     // Log Aktivitas
     Route::get('/logs', [ActivityLogController::class, 'index'])->name('logs.index');
 });
-
 
 // =================================================================
 // 2. GRUP RUTE MEKANIK (PERBAIKAN UTAMA DISINI)
@@ -106,7 +110,7 @@ Route::middleware(['auth', 'role:mechanic'])->prefix('mechanic')->name('mechanic
     // URL kita buat simpel, transaction_id dikirim via input hidden di form
     Route::post('/jobs/spare-parts', [TransactionSparePartController::class, 'store'])
         ->name('spare-parts.store');
-        
+
     Route::delete('/jobs/spare-parts/{id}', [TransactionSparePartController::class, 'destroy'])
         ->name('spare-parts.destroy');
 
@@ -116,7 +120,6 @@ Route::middleware(['auth', 'role:mechanic'])->prefix('mechanic')->name('mechanic
         ->parameters(['jobs' => 'transaction']); // Biar variabel di controller namanya $transaction
 });
 
-
 // =================================================================
 // 3. GRUP RUTE CUSTOMER
 // =================================================================
@@ -124,8 +127,13 @@ Route::middleware(['auth', 'role:customer'])->prefix('customer')->name('customer
 
     Route::get('/dashboard', [CustomerDashboardController::class, 'index'])->name('dashboard');
     
+    // Resource Controller Transaksi & Kendaraan
     Route::resource('transactions', CustomerTransactionController::class);
     Route::resource('vehicles', CustomerVehicleController::class);
+
+    // Upload Bukti Pembayaran
+    Route::post('transactions/{transaction}/upload-proof', [CustomerTransactionController::class, 'uploadProof'])
+    ->name('transactions.uploadProof');
 });
 
 require __DIR__.'/auth.php';

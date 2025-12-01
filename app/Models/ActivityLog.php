@@ -12,8 +12,13 @@ class ActivityLog extends Model
 
     protected $guarded = ['id'];
 
+    // Kita matikan timestamp otomatis (biar gak nyari updated_at)
+    public $timestamps = false;
+
+    // [FIX DISINI] Tambahkan 'created_at' => 'datetime'
     protected $casts = [
-        'metadata' => 'array', // Biar kolom JSON otomatis jadi array
+        'metadata' => 'array',
+        'created_at' => 'datetime', // <--- Wajib ada biar bisa di-format() di Blade
     ];
 
     public function user()
@@ -21,16 +26,12 @@ class ActivityLog extends Model
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Helper sakti untuk mencatat log dengan satu baris kode.
-     * Cara pakai: ActivityLog::record('Menghapus Transaksi #10', ['trx_id' => 10]);
-     */
     public static function record($action, $metadata = [])
     {
         self::create([
-            'user_id' => Auth::id(), // Siapa pelakunya? (Otomatis user yang login)
-            'action' => $action,     // Apa yang dia lakukan?
-            'metadata' => $metadata, // Data tambahan (opsional)
+            'user_id' => Auth::id() ?? null,
+            'action' => $action,
+            'metadata' => $metadata,
         ]);
     }
 }

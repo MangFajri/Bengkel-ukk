@@ -32,10 +32,26 @@
 
     <!-- Nav Item - Transaksi (Menu Utama) -->
     <li class="nav-item {{ request()->routeIs('admin.transactions.*') ? 'active' : '' }}">
-        <a class="nav-link" href="{{ route('admin.transactions.index') }}">
-            <i class="fas fa-fw fa-cash-register text-success"></i>
-            <span class="font-weight-bold">Transaksi & Kasir</span>
+        <a class="nav-link d-flex justify-content-between align-items-center"
+            href="{{ route('admin.transactions.index') }}">
+            <div>
+                <i class="fas fa-fw fa-file-invoice-dollar"></i>
+                <span>Transaksi</span>
+            </div>
+
+            {{-- FITUR BARU: BADGE NOTIFIKASI --}}
+            @if(isset($pendingPaymentCount) && $pendingPaymentCount > 0)
+                <span class="badge badge-danger badge-counter px-2 py-1" style="font-size: 0.7rem;">
+                    {{ $pendingPaymentCount }} Cek Bukti!
+                </span>
+            @endif
         </a>
+    </li>
+
+    <li class="nav-item {{ request()->routeIs('admin.reports.index') ? 'active' : '' }}">
+        <a class="nav-link" href="{{ route('admin.reports.index') }}">
+            <i class="fas fa-fw fa-chart-line"></i>
+            <span>Laporan Keuangan</span></a>
     </li>
 
     <!-- Nav Item - Kendaraan -->
@@ -106,7 +122,7 @@
             </div>
         </div>
     </li>
-    
+
     <!-- Nav Item - Log Aktivitas Sistem -->
     <li class="nav-item {{ request()->routeIs('admin.logs.*') ? 'active' : '' }}">
         <a class="nav-link" href="{{ route('admin.logs.index') }}">

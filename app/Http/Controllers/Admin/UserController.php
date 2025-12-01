@@ -6,106 +6,122 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Http\Requests\StoreUserRequest;
-use App\Http\Requests\UpdateUserRequest;
 use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Pesan Error Kustom (Bahasa Indonesia)
+     * Biar user gak bingung kalau kena validasi.
      */
+    private $customMessages = [
+        'name.required' => 'Nama wajib diisi.',
+        'name.regex' => 'Nama hanya boleh berisi huruf, spasi, dan titik.',
+        'email.required' => 'Email wajib diisi.',
+        'email.email' => 'Format email tidak valid.',
+        'email.unique' => 'Email ini sudah terdaftar.',
+        'password.required' => 'Password wajib diisi.',
+        'password.min' => 'Password minimal 8 karakter.',
+        'password.confirmed' => 'Konfirmasi password tidak cocok.',
+        'phone.required' => 'Nomor telepon wajib diisi.',
+        'phone.numeric' => 'Nomor telepon harus berupa angka (0-9).',
+        'phone.digits_between' => 'Nomor telepon tidak valid (harus 10-14 digit).',
+        'address.required' => 'Alamat wajib diisi.',
+        'address.min' => 'Alamat terlalu pendek, mohon isi alamat lengkap (min 10 karakter).',
+    ];
+
     public function index()
     {
-        // Ambil semua user kecuali yang sedang login
         $users = User::where('id', '!=', Auth::id())->latest()->paginate(10);
-        
         return view('admin.users.index', compact('users'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
         return view('admin.users.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(StoreUserRequest $request)
+    public function store(Request $request)
     {
-       $validatedData = $request->validated();
-        
-        // --- LOGIKA TAMBAHAN (SOLUSI SOFT DELETE) ---
-        // Cek apakah ada user 'sampah' (soft deleted) dengan email ini?
+        // 1. VALIDASI KETAT (Strict Mode)
+        $request->validate([
+            // Nama: Huruf, spasi, titik. Min 3 huruf.
+            'name' => ['required', 'string', 'min:3', 'max:255', 'regex:/^[a-zA-Z\s\.]+$/'], 
+            
+            'email' => 'required|string|email|max:255',
+            'password' => 'required|string|min:8|confirmed',
+            'role' => 'required|in:admin,mechanic,customer',
+            
+            // HP: Wajib Angka, 10-14 digit (Standar Indo)
+            'phone' => 'required|numeric|digits_between:10,14', 
+            
+            // Alamat: Minimal 10 karakter biar ga cuma "Sby"
+            'address' => 'required|string|min:10|max:500', 
+        ], $this->customMessages);
+
+        // 2. LOGIC SOFT DELETE (Cek Tong Sampah)
         $trashedUser = User::onlyTrashed()->where('email', $request->email)->first();
 
         if ($trashedUser) {
-            // Hapus permanen data lama agar emailnya bisa dipakai user baru ini
+            // Kalau ada "mayat" user dengan email ini, hapus permanen biar bisa daftar baru
             $trashedUser->forceDelete();
+        } else {
+            // Kalau bersih, pastikan unique normal
+            $request->validate(['email' => 'unique:users'], $this->customMessages);
         }
-        // --------------------------------------------
 
-        // Handle checkbox
-        $validatedData['is_active'] = $request->has('is_active');
-        
-        // Hashing password sebelum disimpan
-        $validatedData['password'] = Hash::make($validatedData['password']);
-
-        // Buat user baru
-        User::create($validatedData);
+        // 3. SIMPAN
+        User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'role' => $request->role,
+            'phone' => $request->phone,
+            'address' => $request->address,
+            'is_active' => $request->has('is_active'),
+        ]);
 
         return redirect()->route('admin.users.index')->with('success', 'Pengguna baru berhasil ditambahkan.');
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(User $user)
     {
         return view('admin.users.edit', compact('user'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, User $user)
-{
-    $request->validate([
-        'name' => 'required|string|max:255',
-        'email' => 'required|email|unique:users,email,' . $user->id,
-        'role' => 'required|in:admin,mechanic,customer',
-        // Password opsional, hanya divalidasi jika diisi
-        'password' => 'nullable|string|min:8', 
-    ]);
+    {
+        // VALIDASI UPDATE (Password Nullable)
+        $request->validate([
+            'name' => ['required', 'string', 'min:3', 'max:255', 'regex:/^[a-zA-Z\s\.]+$/'],
+            'email' => 'required|email|unique:users,email,' . $user->id,
+            'role' => 'required|in:admin,mechanic,customer',
+            'password' => 'nullable|string|min:8', 
+            'phone' => 'required|numeric|digits_between:10,14', // Update juga harus ketat
+            'address' => 'required|string|min:10|max:500',
+        ], $this->customMessages);
 
-    $data = [
-        'name' => $request->name,
-        'email' => $request->email,
-        'role' => $request->role,
-    ];
+        $data = [
+            'name' => $request->name,
+            'email' => $request->email,
+            'role' => $request->role,
+            'phone' => $request->phone,
+            'address' => $request->address,
+            'is_active' => $request->has('is_active'),
+        ];
 
-    // Logic Reset Password
-    if ($request->filled('password')) {
-        $data['password'] = \Illuminate\Support\Facades\Hash::make($request->password);
+        if ($request->filled('password')) {
+            $data['password'] = Hash::make($request->password);
+        }
+
+        $user->update($data);
+
+        return redirect()->route('admin.users.index')->with('success', 'Data pengguna berhasil diperbarui.');
     }
 
-    $user->update($data);
-
-    return redirect()->route('admin.users.index')
-        ->with('success', 'Data pengguna berhasil diperbarui.');
-}
-
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(User $user)
     {
-       // Melakukan soft delete
         $user->delete();
-
         return redirect()->route('admin.users.index')->with('success', 'Pengguna berhasil dihapus.');
     }
 }

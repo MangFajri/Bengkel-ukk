@@ -3,7 +3,6 @@
 @section('title', 'Daftar Transaksi')
 
 @section('content')
-    <!-- Header Halaman -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-100 font-weight-bold border-left-primary pl-3">Kelola Transaksi Service</h1>
         <a href="{{ route('admin.transactions.create') }}" class="d-none d-sm-inline-block btn btn-primary shadow-sm">
@@ -11,7 +10,6 @@
         </a>
     </div>
 
-    <!-- Notifikasi -->
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show border-left-success shadow-sm" role="alert">
             <i class="fas fa-check-circle mr-2"></i> {{ session('success') }}
@@ -30,7 +28,6 @@
         </div>
     @endif
 
-    <!-- Tabel Transaksi -->
     <div class="card shadow mb-4 border-bottom-primary" style="background-color: #1e293b; border: 1px solid #334155;">
         <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between"
             style="background-color: #1e293b; border-bottom: 1px solid #334155;">
@@ -51,13 +48,10 @@
                             <th style="border-bottom: 2px solid #334155; border-top: none;">Pelanggan</th>
                             <th style="border-bottom: 2px solid #334155; border-top: none;">Kendaraan</th>
                             <th style="border-bottom: 2px solid #334155; border-top: none;">Mekanik</th>
-                            <th class="text-center" style="border-bottom: 2px solid #334155; border-top: none;">Status
-                                Service</th>
-                            <th class="text-center" style="border-bottom: 2px solid #334155; border-top: none;">Status Bayar
-                            </th>
+                            <th class="text-center" style="border-bottom: 2px solid #334155; border-top: none;">Status Service</th>
+                            <th class="text-center" style="border-bottom: 2px solid #334155; border-top: none;">Status Bayar</th>
                             <th class="text-right" style="border-bottom: 2px solid #334155; border-top: none;">Total</th>
-                            <th width="10%" class="text-center" style="border-bottom: 2px solid #334155; border-top: none;">
-                                Aksi</th>
+                            <th width="10%" class="text-center" style="border-bottom: 2px solid #334155; border-top: none;">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -130,7 +124,7 @@
                                     </span>
                                 </td>
 
-                                {{-- Status Pembayaran --}}
+                                {{-- Status Pembayaran & NOTIFIKASI BUKTI --}}
                                 <td class="align-middle text-center">
                                     @if($transaction->payment_status_id == 1)
                                         <span class="badge badge-success px-2 py-1 border border-success">
@@ -140,6 +134,17 @@
                                         <span class="badge badge-danger px-2 py-1 border border-danger">
                                             <i class="fas fa-times mr-1"></i> BELUM
                                         </span>
+                                        
+                                        {{-- [FITUR BARU] Tombol Cek Bukti jika ada upload tapi belum lunas --}}
+                                        @if($transaction->payment_proof)
+                                            <div class="mt-2">
+                                                <a href="{{ route('admin.transactions.edit', $transaction->id) }}" 
+                                                   class="btn btn-sm btn-danger font-weight-bold py-0 shadow-sm pulse-button" 
+                                                   style="font-size: 0.7rem; border: 1px solid #ff6b6b;">
+                                                    <i class="fas fa-exclamation-circle mr-1"></i> Cek Bukti
+                                                </a>
+                                            </div>
+                                        @endif
                                     @endif
                                 </td>
 
@@ -210,4 +215,16 @@
             </div>
         </div>
     </div>
+
+    {{-- Style Tambahan untuk animasi pulse tombol Cek Bukti --}}
+    <style>
+        .pulse-button {
+            animation: pulse-red 2s infinite;
+        }
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(231, 74, 59, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(231, 74, 59, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(231, 74, 59, 0); }
+        }
+    </style>
 @endsection

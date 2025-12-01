@@ -1,55 +1,87 @@
-<nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
-    <!-- Sidebar Toggle (Topbar) -->
-    <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
+<style>
+    /* Navbar Background Gelap */
+    .navbar-custom {
+        background-color: #1e293b !important;
+        border-bottom: 1px solid #334155 !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+    }
+    /* Dropdown Menu */
+    .dropdown-menu-dark-custom {
+        background-color: #1e293b !important;
+        border: 1px solid #334155 !important;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5) !important;
+    }
+    /* Item Text */
+    .dropdown-item-dark-custom {
+        color: #cbd5e1 !important;
+        transition: all 0.2s;
+    }
+    .dropdown-item-dark-custom:hover {
+        background-color: #334155 !important;
+        color: #fff !important;
+        padding-left: 1.5rem;
+    }
+    /* Divider & Icon */
+    .dropdown-divider-custom { border-top: 1px solid #334155 !important; }
+    .dropdown-item-dark-custom i { color: #94a3b8 !important; }
+    .dropdown-item-dark-custom:hover i { color: #fff !important; }
+</style>
+
+<nav class="navbar navbar-expand navbar-light topbar mb-4 static-top shadow navbar-custom">
+
+    <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3 text-white-50">
         <i class="fa fa-bars"></i>
     </button>
 
-    <!-- Topbar Navbar -->
     <ul class="navbar-nav ml-auto">
-        <!-- Nav Item - User Information -->
+
+        <div class="topbar-divider d-none d-sm-block" style="border-color: #334155;"></div>
+
         <li class="nav-item dropdown no-arrow">
             <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
                 data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                <span class="mr-2 d-none d-lg-inline text-gray-600 small">{{ Auth::user()->name }}</span>
+                <span class="mr-2 d-none d-lg-inline text-gray-300 small font-weight-bold">
+                    {{ Auth::user()->name ?? 'User' }}
+                </span>
+                
+                <div class="img-profile rounded-circle d-flex align-items-center justify-content-center font-weight-bold text-white" 
+                     style="width: 32px; height: 32px; background-color: #4e73df;">
+                    {{ strtoupper(substr(Auth::user()->name ?? 'U', 0, 1)) }}
+                </div>
             </a>
-            <!-- Dropdown - User Information -->
-            <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in"
+            
+            <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in dropdown-menu-dark-custom"
                 aria-labelledby="userDropdown">
-                <a class="dropdown-item" href="{{ route('profile.edit') }}">
-                    <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
-                    Profil
+                
+                <div class="px-3 py-2 text-center border-bottom border-secondary mb-2">
+                    <span class="small text-gray-500 d-block">Login sebagai:</span>
+                    <span class="font-weight-bold text-white text-uppercase">{{ Auth::user()->role }}</span>
+                </div>
+
+                <a class="dropdown-item dropdown-item-dark-custom" href="{{ route('profile.edit') }}">
+                    <i class="fas fa-user fa-sm fa-fw mr-2"></i>
+                    Profile Saya
                 </a>
-                <div class="dropdown-divider"></div>
-                <a class="dropdown-item" href="#" data-toggle="modal" data-target="#logoutModal">
-                    <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
-                    Keluar
+                
+                {{-- [DIHAPUS] Menu Settings yang tidak berfungsi --}}
+
+                {{-- Activity Log Shortcut (Khusus Admin) --}}
+                @if(Auth::user()->role === 'admin')
+                    <a class="dropdown-item dropdown-item-dark-custom" href="{{ route('admin.logs.index') }}">
+                        <i class="fas fa-list fa-sm fa-fw mr-2"></i>
+                        Activity Log
+                    </a>
+                @endif
+
+                <div class="dropdown-divider dropdown-divider-custom"></div>
+                
+                <a class="dropdown-item dropdown-item-dark-custom text-danger" href="#" data-toggle="modal" data-target="#logoutModal">
+                    <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2"></i>
+                    Logout
                 </a>
             </div>
         </li>
-    </ul>
-</nav>
 
-<!-- Logout Modal-->
-<div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
-    aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="exampleModalLabel">Siap untuk Keluar?</h5>
-                <button class="close" type="button" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">×</span>
-                </button>
-            </div>
-            <div class="modal-body">Pilih "Keluar" di bawah jika Anda siap untuk mengakhiri sesi Anda saat ini.</div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" type="button" data-dismiss="modal">Batal</button>
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
-                    <a class="btn btn-primary" href="{{ route('logout') }}" onclick="event.preventDefault(); this.closest('form').submit();">
-                        Keluar
-                    </a>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+    </ul>
+
+</nav>

@@ -3,21 +3,19 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
-use App\Models\PaymentStatus;
 use App\Models\Service;
-use App\Models\ServiceStatus;
 use App\Models\Transaction;
 use App\Models\TransactionService;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class CustomerTransactionController extends Controller
 {
     public function index()
     {
-        // Tambahkan 'services' ke dalam with([])
         $transactions = Transaction::with(['vehicle', 'serviceStatus', 'services'])
             ->where('customer_id', Auth::id())
             ->latest()
@@ -41,15 +39,13 @@ class CustomerTransactionController extends Controller
 
     public function store(Request $request)
     {
-        // 1. VALIDASI KETAT
         $request->validate([
-            // Pastikan vehicle_id ada DAN milik user yang login
             'vehicle_id' => [
                 'required',
                 'integer',
                 function ($attribute, $value, $fail) {
                     $exists = Vehicle::where('id', $value)
-                        ->where('user_id', Auth::id()) // Kunci pengaman disini
+                        ->where('user_id', Auth::id())
                         ->exists();
                     if (! $exists) {
                         $fail('Kendaraan yang dipilih tidak valid atau bukan milik Anda.');
@@ -59,42 +55,41 @@ class CustomerTransactionController extends Controller
             'service_ids' => 'required|array|min:1',
             'service_ids.*' => 'exists:services,id',
             'notes' => 'nullable|string|max:500',
-            // Tambahkan tanggal booking (opsional, kalau tidak diisi berarti hari ini)
             'booking_date' => 'nullable|date|after_or_equal:today',
         ]);
 
         try {
             DB::beginTransaction();
 
-            // 2. Hitung Total Biaya Awal
+            // 1. Hitung Total Biaya
             $selectedServices = Service::whereIn('id', $request->service_ids)->get();
             $initialTotal = $selectedServices->sum('price');
 
-            // 3. Cari ID Status Otomatis (Anti Error ID)
-            $pendingStatus = ServiceStatus::where('code', 'pending')->first();
-            $pendingId = $pendingStatus ? $pendingStatus->id : 1; // Fallback ke 1
+            // 2. Tentukan Status
+            // LOGIC BARU: Customer Booking = Status 2 (Menunggu)
+            $waitingStatusId = 2;
 
-            $unpaidStatus = PaymentStatus::where('code', 'unpaid')->first();
-            $unpaidId = $unpaidStatus ? $unpaidStatus->id : 1;
+            // Default Payment = 3 (Belum Bayar)
+            $unpaidId = 3;
 
-            // 4. Buat Transaksi
-            // Kita pakai field created_at sebagai tanggal booking kalau user tidak isi tanggal
+            // 3. Tanggal Booking
             $bookingDate = $request->booking_date ?? now();
 
             $transaction = Transaction::create([
-                'code' => 'TRX-'.mt_rand(100000, 999999),
+                // Generate Kode Unik (Opsional, tapi bagus buat UX)
+                // 'code' => 'TRX-' . mt_rand(100000, 999999),
                 'customer_id' => Auth::id(),
                 'vehicle_id' => $request->vehicle_id,
-                'service_status_id' => $pendingId, // Status Pending
-                'payment_status_id' => $unpaidId,  // Status Belum Bayar
-                'payment_method_id' => null,       // Belum pilih metode bayar
+                'service_status_id' => $waitingStatusId, // <-- PENTING: Status Menunggu
+                'payment_status_id' => $unpaidId,
+                'payment_method_id' => null,
                 'notes' => $request->notes,
                 'total_amount' => $initialTotal,
                 'created_by' => Auth::id(),
-                'created_at' => $bookingDate, // Manipulasi tanggal dibuat sesuai booking
+                'created_at' => $bookingDate,
             ]);
 
-            // 5. Simpan Detail Services
+            // 4. Simpan Detail Services
             foreach ($selectedServices as $service) {
                 TransactionService::create([
                     'transaction_id' => $transaction->id,
@@ -107,7 +102,7 @@ class CustomerTransactionController extends Controller
             DB::commit();
 
             return redirect()->route('customer.transactions.index')
-                ->with('success', 'Booking berhasil! Tunggu konfirmasi admin ya.');
+                ->with('success', 'Booking berhasil dikirim! Silakan tunggu konfirmasi Admin.');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -122,9 +117,34 @@ class CustomerTransactionController extends Controller
             abort(403);
         }
 
-        // Load relasi yang diperlukan
         $transaction->load(['vehicle', 'serviceStatus', 'services', 'spareParts']);
 
         return view('customer.transactions.show', compact('transaction'));
+    }
+
+    public function uploadProof(Request $request, Transaction $transaction)
+    {
+        // Validasi: Pastikan ini transaksi milik user yang login
+        if ($transaction->customer_id !== Auth::id()) {
+            abort(403);
+        }
+
+        $request->validate([
+            'payment_proof' => 'required|image|max:2048', // Max 2MB, harus gambar
+        ]);
+
+        // Hapus bukti lama jika ada (misal dia salah upload sebelumnya)
+        if ($transaction->payment_proof) {
+            Storage::disk('public')->delete($transaction->payment_proof);
+        }
+
+        // Simpan file baru ke folder 'payments' di storage public
+        $path = $request->file('payment_proof')->store('payments', 'public');
+
+        $transaction->update([
+            'payment_proof' => $path,
+        ]);
+
+        return back()->with('success', 'Bukti pembayaran berhasil diupload! Tunggu verifikasi admin.');
     }
 }

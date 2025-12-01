@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Transaction;
+use App\Models\ActivityLog;
 use App\Models\SparePart;
+use App\Models\Transaction;
 use App\Models\TransactionSparePart;
-use App\Models\ActivityLog; 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -19,11 +19,11 @@ class TransactionSparePartController extends Controller
             'spare_part_id' => 'required|exists:spare_parts,id',
             'qty' => 'required|integer|min:1',
         ]);
-        
+
         $transaction = Transaction::findOrFail($request->transaction_id);
 
         // CEGAH PERUBAHAN JIKA SUDAH LUNAS
-        if ($transaction->payment_status_id == 1) { 
+        if ($transaction->payment_status_id == 1) {
             return back()->with('error', 'Transaksi sudah LUNAS! Tidak bisa menambah item.');
         }
 
@@ -50,7 +50,10 @@ class TransactionSparePartController extends Controller
                 'transaction_id' => $request->transaction_id,
                 'spare_part_id' => $sparePart->id,
                 'qty' => $request->qty,
-                'price_at_time' => $priceToCharge,
+                'price_at_time' => $priceToCharge, // Harga Jual
+
+                // [TAMBAHAN BARU] Kunci harga modal saat ini
+                'cost_price_at_time' => $sparePart->cost_price ?? 0,
             ]);
 
             // 4. Kurangi Stok Master
@@ -66,10 +69,12 @@ class TransactionSparePartController extends Controller
             );
 
             DB::commit();
+
             return back()->with('success', 'Sparepart berhasil ditambahkan: '.$sparePart->name);
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             return back()->with('error', 'Terjadi kesalahan: '.$e->getMessage());
         }
     }
@@ -88,13 +93,13 @@ class TransactionSparePartController extends Controller
 
             // Cek Transaksi Induk (Security Check)
             $transaction = Transaction::where('id', $item->transaction_id)->first();
-            
+
             if ($transaction && $transaction->payment_status_id == 1) {
                 return back()->with('error', 'Transaksi sudah LUNAS! Item tidak bisa dihapus.');
             }
 
             $transactionId = $item->transaction_id;
-            
+
             // [PERBAIKAN DISINI] Ambil nama barang DULU sebelum dihapus itemnya
             // Kita gunakan optional() jaga-jaga kalau master barangnya udah dihapus (soft delete)
             $partName = optional($item->sparePart)->name ?? 'Barang Terhapus';
@@ -118,10 +123,12 @@ class TransactionSparePartController extends Controller
             );
 
             DB::commit();
+
             return back()->with('success', 'Sparepart dihapus & Stok dikembalikan.');
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             return back()->with('error', 'Gagal menghapus: '.$e->getMessage());
         }
     }

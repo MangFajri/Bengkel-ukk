@@ -3,7 +3,6 @@
 @section('title', 'Edit Transaksi #' . $transaction->id)
 
 @section('content')
-    <!-- Header -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-100 font-weight-bold">Edit Transaksi: <span class="text-warning">#{{ $transaction->id }}</span></h1>
         <a href="{{ route('admin.transactions.index') }}" class="btn btn-secondary btn-sm shadow-sm">
@@ -11,7 +10,6 @@
         </a>
     </div>
 
-    <!-- Alert -->
     @if(session('error'))
         <div class="alert alert-danger alert-dismissible fade show border-left-danger" role="alert">
             <i class="fas fa-exclamation-triangle mr-2"></i> {{ session('error') }}
@@ -21,16 +19,13 @@
 
     <div class="row">
 
-        <!-- KOLOM KIRI: Data Utama (Customer, Mobil, Status) -->
         <div class="col-lg-4">
-            <!-- Card Data Utama -->
             <div class="card shadow mb-4 border-left-primary" style="background-color: #1e293b; border: 1px solid #334155;">
                 <div class="card-header py-3" style="background-color: #1e293b; border-bottom: 1px solid #334155;">
                     <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-file-alt mr-1"></i> Data Utama</h6>
                 </div>
                 <div class="card-body">
                     
-                    <!-- Info Customer (Read Only - Lebih Gelap) -->
                     <div class="form-group">
                         <label class="text-gray-400 font-weight-bold small text-uppercase">Pelanggan</label>
                         <input type="text" class="form-control font-weight-bold text-white" 
@@ -38,7 +33,6 @@
                                value="{{ $transaction->customer->name ?? 'Umum' }}" readonly>
                     </div>
 
-                    <!-- Info Kendaraan (Read Only) -->
                     <div class="form-group">
                         <label class="text-gray-400 font-weight-bold small text-uppercase">Kendaraan</label>
                         <input type="text" class="form-control font-weight-bold text-white" 
@@ -46,7 +40,6 @@
                                value="{{ $transaction->vehicle->plate_number ?? '-' }} ({{ $transaction->vehicle->model ?? '' }})" readonly>
                     </div>
 
-                    <!-- Keluhan (Read Only) -->
                     <div class="form-group">
                         <label class="text-gray-400 font-weight-bold small text-uppercase">Keluhan / Notes</label>
                         <textarea class="form-control text-white font-weight-bold" rows="2" 
@@ -55,12 +48,10 @@
                     
                     <hr style="border-color: #475569; margin: 1.5rem 0;">
 
-                    <!-- FORM UPDATE STATUS (UTAMA) -->
                     <form action="{{ route('admin.transactions.update', $transaction->id) }}" method="POST">
                         @csrf
                         @method('PUT')
 
-                        <!-- 1. Pilih Mekanik -->
                         <div class="form-group">
                             <label class="text-gray-100 font-weight-bold small text-uppercase">Pilih Mekanik</label>
                             <select name="mechanic_id" class="form-control font-weight-bold shadow-sm" 
@@ -75,7 +66,6 @@
                             </select>
                         </div>
 
-                        <!-- 2. Status Service (FIX LOGIC & DESAIN) -->
                         <div class="form-group">
                             <label class="text-gray-100 font-weight-bold small text-uppercase">Status Service</label>
                             <select name="service_status_id" class="form-control font-weight-bold shadow-sm"
@@ -83,14 +73,12 @@
                                 @foreach($serviceStatuses as $status)
                                     <option value="{{ $status->id }}" style="background-color: #1e293b; color: #ffffff;"
                                         {{ $transaction->service_status_id == $status->id ? 'selected' : '' }}>
-                                        {{-- FIX: Pake Label, bukan Name --}}
                                         {{ $status->label }} 
                                     </option>
                                 @endforeach
                             </select>
                         </div>
 
-                        <!-- 3. Status Pembayaran (FIX LOGIC & DESAIN) -->
                         <div class="form-group">
                             <label class="text-gray-100 font-weight-bold small text-uppercase">Status Pembayaran</label>
                             <select name="payment_status_id" class="form-control font-weight-bold shadow-sm"
@@ -98,7 +86,6 @@
                                 @foreach($paymentStatuses as $status)
                                     <option value="{{ $status->id }}" style="background-color: #1e293b; color: #ffffff;"
                                         {{ $transaction->payment_status_id == $status->id ? 'selected' : '' }}>
-                                        {{-- FIX: Pake Label, bukan Name --}}
                                         {{ $status->label }}
                                     </option>
                                 @endforeach
@@ -114,10 +101,8 @@
             </div>
         </div>
 
-        <!-- KOLOM KANAN: Detail Item (Services & Spareparts) -->
         <div class="col-lg-8">
             
-            <!-- 1. DATA JASA (SERVICES) -->
             <div class="card shadow mb-4 border-left-info" style="background-color: #1e293b; border: 1px solid #334155;">
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between" style="background-color: #1e293b; border-bottom: 1px solid #334155;">
                     <h6 class="m-0 font-weight-bold text-info"><i class="fas fa-tools mr-1"></i> Jasa Service</h6>
@@ -181,7 +166,6 @@
                 </div>
             </div>
 
-            <!-- 2. DATA SPAREPART -->
             <div class="card shadow mb-4 border-left-warning" style="background-color: #1e293b; border: 1px solid #334155;">
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between" style="background-color: #1e293b; border-bottom: 1px solid #334155;">
                     <h6 class="m-0 font-weight-bold text-warning"><i class="fas fa-box mr-1"></i> Sparepart / Barang</h6>
@@ -257,12 +241,28 @@
                 </div>
             </div>
 
-            <!-- 3. PANEL PEMBAYARAN -->
             <div class="card shadow mb-4 border-left-success" style="background-color: #1e293b; border: 1px solid #334155;">
                 <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Tagihan</div>
-                        <div class="h3 mb-0 font-weight-bold text-white">Rp {{ number_format($transaction->total_amount, 0, ',', '.') }}</div>
+                    
+                    <div class="d-flex align-items-center">
+                        <div class="mr-4">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Tagihan</div>
+                            <div class="h3 mb-0 font-weight-bold text-white">Rp {{ number_format($transaction->total_amount, 0, ',', '.') }}</div>
+                        </div>
+
+                        @if($transaction->payment_proof)
+                            <div class="ml-3 p-2 rounded border border-secondary" style="background: rgba(0,0,0,0.2);">
+                                <a href="{{ asset('storage/' . $transaction->payment_proof) }}" target="_blank" class="text-decoration-none">
+                                    <img src="{{ asset('storage/' . $transaction->payment_proof) }}" 
+                                         class="img-fluid rounded shadow-sm" 
+                                         style="height: 50px; width: auto;" 
+                                         data-toggle="tooltip" title="Klik untuk memperbesar bukti transfer">
+                                    <small class="d-block text-center text-gray-400 mt-1" style="font-size: 0.7rem;">
+                                        <i class="fas fa-paperclip"></i> Bukti
+                                    </small>
+                                </a>
+                            </div>
+                        @endif
                     </div>
                     
                     @if($transaction->payment_status_id != 1)
@@ -283,7 +283,6 @@
         </div>
     </div>
 
-    <!-- Modal Pembayaran (FIX DARK MODE MODAL) -->
     <div class="modal fade" id="paymentModal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content text-white" style="background-color: #1e293b; border: 1px solid #475569;">
@@ -298,6 +297,14 @@
                 <form action="{{ route('admin.transactions.updatePayment', $transaction->id) }}" method="POST">
                     @csrf
                     <div class="modal-body">
+                        
+                        @if($transaction->payment_proof)
+                            <div class="alert alert-info mb-3 text-center">
+                                <small class="font-weight-bold">Bukti Transfer Customer:</small><br>
+                                <img src="{{ asset('storage/' . $transaction->payment_proof) }}" class="img-fluid rounded mt-2" style="max-height: 150px;">
+                            </div>
+                        @endif
+
                         <div class="form-group">
                             <label class="text-gray-300 small text-uppercase font-weight-bold">Total Tagihan</label>
                             <input type="text" class="form-control-plaintext text-white font-weight-bold h3" 
@@ -305,7 +312,6 @@
                         </div>
                         <div class="form-group">
                             <label class="text-gray-300 small text-uppercase font-weight-bold">Metode Pembayaran</label>
-                            {{-- FIX DROPDOWN MODAL --}}
                             <select name="payment_method_id" class="form-control font-weight-bold text-white shadow-sm" 
                                     style="background-color: #334155; border: 1px solid #1cc88a;">
                                 @foreach($paymentMethods as $method)

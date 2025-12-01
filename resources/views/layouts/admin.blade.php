@@ -5,21 +5,26 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="description" content="">
-    <meta name="author" content="">
+    <meta name="description" content="Aplikasi Bengkel UKK">
+    <meta name="author" content="FajriGarage">
 
     <title>@yield('title', 'Dashboard') - Bengkel Fajri</title>
 
+    {{-- Font Awesome --}}
     <link href="{{ asset('vendor/fontawesome-free/css/all.min.css') }}" rel="stylesheet" type="text/css">
     
+    {{-- Google Fonts (Inter & Oswald) --}}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 
+    {{-- SB Admin 2 CSS --}}
     <link href="{{ asset('css/sb-admin-2.min.css') }}" rel="stylesheet">
 
+    {{-- DataTables CSS --}}
     <link href="{{ asset('vendor/datatables/dataTables.bootstrap4.min.css') }}" rel="stylesheet">
 
+    {{-- CUSTOM DARK MODE STYLES --}}
     <style>
         /* Base Theme */
         body {
@@ -113,17 +118,36 @@
         }
         .btn-primary:hover {
             background-color: #ea580c !important;
+            border-color: #ea580c !important;
         }
 
-        /* Text Colors */
+        /* Text Colors Overrides */
         .text-gray-800 { color: #f8fafc !important; }
         .text-gray-600 { color: #94a3b8 !important; }
+        .text-gray-400 { color: #cbd5e1 !important; }
         
         /* Scrollbar Keren */
         ::-webkit-scrollbar { width: 10px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 5px; }
         ::-webkit-scrollbar-thumb:hover { background: #f97316; }
+
+        /* Modal Dark Mode */
+        .modal-content {
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            color: #fff;
+        }
+        .modal-header, .modal-footer {
+            border-color: #334155;
+        }
+        .close {
+            color: #fff;
+            text-shadow: none;
+        }
+        .close:hover {
+            color: #f97316;
+        }
     </style>
 </head>
 
@@ -138,6 +162,7 @@
 
                 @include('layouts.partials.admin-navbar')
                 <div class="container-fluid">
+                    
                     @if(isset($header))
                         <div class="d-sm-flex align-items-center justify-content-between mb-4">
                             <h1 class="h3 mb-0 text-white font-weight-bold" style="font-family: 'Oswald', sans-serif; text-transform: uppercase;">
@@ -153,7 +178,7 @@
             <footer class="sticky-footer bg-transparent">
                 <div class="container my-auto">
                     <div class="copyright text-center my-auto text-gray-600">
-                        <span>Copyright &copy; FajriGarage 2025</span>
+                        <span>Copyright &copy; FajriGarage {{ date('Y') }}</span>
                     </div>
                 </div>
             </footer>
@@ -166,16 +191,22 @@
     <div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
         aria-hidden="true">
         <div class="modal-dialog" role="document">
-            <div class="modal-content" style="background-color: #1e293b; color: white;">
-                <div class="modal-header" style="border-bottom: 1px solid #334155;">
-                    <h5 class="modal-title" id="exampleModalLabel">Ready to Leave?</h5>
+            <div class="modal-content shadow-lg">
+                <div class="modal-header">
+                    <h5 class="modal-title font-weight-bold text-warning" id="exampleModalLabel">
+                        <i class="fas fa-sign-out-alt mr-2"></i>Ready to Leave?
+                    </h5>
                     <button class="close" type="button" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true" style="color: white;">×</span>
+                        <span aria-hidden="true">×</span>
                     </button>
                 </div>
-                <div class="modal-body">Pilih "Logout" di bawah jika Anda siap mengakhiri sesi ini.</div>
-                <div class="modal-footer" style="border-top: 1px solid #334155;">
-                    <button class="btn btn-secondary" type="button" data-dismiss="modal">Cancel</button>
+                <div class="modal-body text-gray-300">
+                    Pilih "Logout" di bawah jika Anda siap mengakhiri sesi ini.
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" type="button" data-dismiss="modal">Batal</button>
+                    
+                    {{-- Form Logout Wajib Ada untuk method POST --}}
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
                         <button type="submit" class="btn btn-primary">Logout</button>
@@ -193,7 +224,6 @@
     <script src="{{ asset('js/sb-admin-2.min.js') }}"></script>
 
     <script src="{{ asset('vendor/chart.js/Chart.min.js') }}"></script>
-    
     <script src="{{ asset('vendor/datatables/jquery.dataTables.min.js') }}"></script>
     <script src="{{ asset('vendor/datatables/dataTables.bootstrap4.min.js') }}"></script>
 

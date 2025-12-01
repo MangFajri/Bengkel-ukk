@@ -54,6 +54,12 @@ class Transaction extends Model
         return $this->belongsTo(PaymentMethod::class, 'payment_method_id');
     }
 
+    // Relasi ke User pembuat transaksi (Admin/Kasir) untuk Nota
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by')->withTrashed();
+    }
+
     // =================================================================
     // 2. RELASI KE CHILD (BelongsToMany - BIAR FLEKSIBEL)
     // =================================================================
@@ -68,7 +74,7 @@ class Transaction extends Model
     public function spareParts(): BelongsToMany
     {
         return $this->belongsToMany(SparePart::class, 'transaction_spare_parts', 'transaction_id', 'spare_part_id')
-                    ->withPivot('id', 'qty', 'price_at_time');
+                    ->withPivot('id', 'qty', 'price_at_time', 'cost_price_at_time');
     }
 
     // =================================================================
