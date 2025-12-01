@@ -76,15 +76,25 @@
                                 @forelse ($transaction->spareParts as $detail)
                                     <tr>
                                         <td>
-                                            {{-- Relasi ke tabel spare_parts dari detail transaksi --}}
-                                            {{ $detail->sparePart->name ?? 'Item Terhapus' }}
-                                            @if($detail->serial_number)
-                                                <small class="d-block text-muted">No. Seri: {{ $detail->serial_number }}</small>
+                                            {{-- FIX: Langsung panggil name dari object SparePart --}}
+                                            {{ $detail->name }}
+                                            
+                                            {{-- FIX: Serial number ada di pivot --}}
+                                            @if($detail->pivot->serial_number ?? false)
+                                                <small class="d-block text-muted">No. Seri: {{ $detail->pivot->serial_number }}</small>
                                             @endif
                                         </td>
-                                        <td>{{ $detail->qty }}</td>
-                                        <td class="text-right">Rp {{ number_format($detail->price_at_time, 0, ',', '.') }}</td>
-                                        <td class="text-right">Rp {{ number_format($detail->price_at_time * $detail->qty, 0, ',', '.') }}</td>
+                                        
+                                        {{-- FIX: Ambil Qty dari Pivot --}}
+                                        <td>{{ $detail->pivot->qty }}</td>
+                                        
+                                        {{-- FIX: Ambil Harga dari Pivot --}}
+                                        <td class="text-right">Rp {{ number_format($detail->pivot->price_at_time, 0, ',', '.') }}</td>
+                                        
+                                        {{-- FIX: Hitung Subtotal pakai data Pivot --}}
+                                        <td class="text-right">
+                                            Rp {{ number_format($detail->pivot->price_at_time * $detail->pivot->qty, 0, ',', '.') }}
+                                        </td>
                                     </tr>
                                 @empty
                                     <tr><td colspan="4" class="text-center text-muted">Tidak ada sparepart tambahan</td></tr>

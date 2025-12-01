@@ -99,6 +99,7 @@
         </div>
 
         <div class="col-xl-4 col-lg-5">
+            
             <div class="card shadow mb-4" style="background-color: #1e293b; border: 1px solid #334155;">
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between" style="background-color: #1e293b; border-bottom: 1px solid #334155;">
                     <h6 class="m-0 font-weight-bold text-primary text-uppercase">Order Terbaru</h6>
@@ -138,6 +139,31 @@
                     </div>
                 </div>
             </div>
+
+            <div class="card shadow mb-4" style="background-color: #1e293b; border: 1px solid #334155;">
+                <div class="card-header py-3" style="background-color: #1e293b; border-bottom: 1px solid #334155;">
+                    <h6 class="m-0 font-weight-bold text-success text-uppercase">🏆 Sparepart Terlaris</h6>
+                </div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush">
+                        @if(isset($topSpareparts))
+                            @forelse($topSpareparts as $part)
+                                <li class="list-group-item d-flex justify-content-between align-items-center" style="background-color: transparent; border-bottom: 1px solid #334155;">
+                                    <span class="text-white">{{ $part->name }}</span>
+                                    <span class="badge badge-success badge-pill">{{ $part->total_sold }} Terjual</span>
+                                </li>
+                            @empty
+                                <li class="list-group-item text-center text-gray-500 p-3">Belum ada penjualan barang</li>
+                            @endforelse
+                        @else
+                            <li class="list-group-item text-center text-danger p-3">
+                                Variabel $topSpareparts belum dikirim dari Controller.
+                            </li>
+                        @endif
+                    </ul>
+                </div>
+            </div>
+
         </div>
     </div>
 

@@ -21,9 +21,8 @@ use Illuminate\Validation\Rule;
 
 class AdminTransactionController extends Controller
 {
-    /**
-     * Menampilkan semua transaksi.
-     */
+    // ... [Code index & create tetap sama] ...
+    
     public function index()
     {
         $transactions = Transaction::with(['customer', 'vehicle', 'mechanic', 'serviceStatus', 'paymentStatus'])
@@ -33,37 +32,29 @@ class AdminTransactionController extends Controller
         return view('admin.transactions.index', compact('transactions'));
     }
 
-    /**
-     * Form Input Transaksi Baru (Hybrid).
-     */
     public function create()
     {
         $customers = User::where('role', 'customer')->get();
         $mechanics = User::where('role', 'mechanic')->where('is_active', true)->get();
-        // Ambil vehicle yang usernya aktif (optional optimization)
         $vehicles = Vehicle::with('user')->get(); 
         $services = Service::where('is_active', true)->get();
-        // Tambahkan data spareparts agar bisa dipilih di form
         $spareParts = SparePart::where('is_active', true)->where('stock', '>', 0)->get();
 
         return view('admin.transactions.create', compact('customers', 'mechanics', 'vehicles', 'services', 'spareParts'));
     }
 
-    /**
-     * Logic Penyimpanan Data.
-     */
+    // ... [Code store tetap sama, sudah aman] ...
     public function store(Request $request)
     {
-        // Validasi input awal
+        // Copy paste method store kamu yang tadi, itu sudah valid.
+        // Saya persingkat di sini biar chat tidak kepanjangan.
         $request->validate([
             'type'          => 'required|in:existing,walkin',
             'mechanic_id'   => 'nullable|exists:users,id',
-            'date'          => 'required|date', // Pastikan ada input tanggal
+            'date'          => 'required|date',
             'notes'         => 'nullable|string',
-            // Validasi Jasa (Array)
             'service_ids'   => 'nullable|array',
             'service_ids.*' => 'exists:services,id',
-            // Validasi Sparepart (Array of Objects)
             'spare_parts'   => 'nullable|array',
             'spare_parts.*.id' => 'exists:spare_parts,id',
             'spare_parts.*.qty' => 'numeric|min:1',
@@ -76,9 +67,6 @@ class AdminTransactionController extends Controller
             $vehicleId = null;
             $totalPrice = 0;
 
-            // =================================================
-            // 1. HANDLER USER & VEHICLE (Walk-in vs Existing)
-            // =================================================
             if ($request->type == 'existing') {
                 $request->validate([
                     'customer_id' => 'required|exists:users,id',
@@ -87,137 +75,95 @@ class AdminTransactionController extends Controller
                 $customerId = $request->customer_id;
                 $vehicleId  = $request->vehicle_id;
             } else {
-                // Validasi khusus Walk-in
                 $request->validate([
                     'new_name'         => 'required|string|max:255',
                     'new_phone'        => 'required|string|max:20',
                     'new_brand'        => 'required|string',
                     'new_model'        => 'required|string',
                     'new_plate_number' => [
-                        'required',
-                        'string',
-                        // Fix Soft Delete: Plat nomor boleh sama jika data lama sudah dihapus
+                        'required', 'string',
                         Rule::unique('vehicles', 'plate_number')->whereNull('deleted_at')
                     ],
                 ]);
 
-                // --- TRASH CLEANER LOGIC (Untuk Walk-in) ---
-                // Cek apakah plat nomor ada di tong sampah?
-                $trashedVehicle = Vehicle::onlyTrashed()
-                    ->where('plate_number', $request->new_plate_number)
-                    ->first();
+                $trashedVehicle = Vehicle::onlyTrashed()->where('plate_number', $request->new_plate_number)->first();
+                if ($trashedVehicle) $trashedVehicle->forceDelete();
 
-                if ($trashedVehicle) {
-                    // Jika vehicle dihapus, usernya kemungkinan juga dihapus/tidak valid
-                    // Kita hapus permanen vehicle lama agar plat bisa dipakai
-                    $trashedVehicle->forceDelete();
-                }
-                // -------------------------------------------
-
-                // Buat User Customer Baru (Walk-in)
                 $newUser = User::create([
-                    'name'      => $request->new_name,
-                    // Email unik dummy
-                    'email'     => 'walkin_' . uniqid() . '@bengkel.com',
-                    'phone'     => $request->new_phone,
-                    'password'  => Hash::make('password'), // Default password
-                    'role'      => 'customer',
+                    'name' => $request->new_name,
+                    'email' => 'walkin_' . uniqid() . '@bengkel.com',
+                    'phone' => $request->new_phone,
+                    'password' => Hash::make('password'),
+                    'role' => 'customer',
                     'is_active' => 1
                 ]);
-
                 $customerId = $newUser->id;
 
-                // Buat Kendaraan Baru
                 $newVehicle = Vehicle::create([
-                    'user_id'      => $customerId,
+                    'user_id' => $customerId,
                     'plate_number' => strtoupper($request->new_plate_number),
-                    'brand'        => $request->new_brand,
-                    'model'        => $request->new_model,
-                    'year'         => date('Y'),
-                    'color'        => 'Unknown', // Default
+                    'brand' => $request->new_brand,
+                    'model' => $request->new_model,
+                    'year' => date('Y'),
+                    'color' => 'Unknown',
                 ]);
-
                 $vehicleId = $newVehicle->id;
             }
 
-            // =================================================
-            // 2. HITUNG TOTAL & VALIDASI STOK
-            // =================================================
-            
-            // Hitung Jasa
             if (!empty($request->service_ids)) {
                 $selectedServices = Service::whereIn('id', $request->service_ids)->get();
                 $totalPrice += $selectedServices->sum('price');
             }
 
-            // Hitung Sparepart & Cek Stok
             if (!empty($request->spare_parts)) {
                 foreach ($request->spare_parts as $item) {
                     $part = SparePart::find($item['id']);
-                    
-                    // Cek Stok Cukup?
                     if ($part->stock < $item['qty']) {
                         throw new \Exception("Stok barang {$part->name} tidak cukup! Sisa: {$part->stock}");
                     }
-                    
                     $totalPrice += $part->sell_price * $item['qty'];
                 }
             }
 
-            // =================================================
-            // 3. SIMPAN TRANSAKSI UTAMA
-            // =================================================
             $transaction = Transaction::create([
-                'customer_id'       => $customerId,
-                'vehicle_id'        => $vehicleId,
-                'mechanic_id'       => $request->mechanic_id,
-                'created_by'        => Auth::id(),
-                'date'              => $request->date, // Simpan tanggal transaksi
-                'service_status_id' => 1, // Default: Pending / Menunggu
-                'payment_status_id' => 3, // Default: Unpaid / Belum Lunas
-                'total_amount'      => $totalPrice,
-                'check_in_at'       => now(),
-                'notes'             => $request->notes,
+                'customer_id' => $customerId,
+                'vehicle_id' => $vehicleId,
+                'mechanic_id' => $request->mechanic_id,
+                'created_by' => Auth::id(),
+                'date' => $request->date,
+                'service_status_id' => 1,
+                'payment_status_id' => 3,
+                'total_amount' => $totalPrice,
+                'check_in_at' => now(),
+                'notes' => $request->notes,
             ]);
 
-            // =================================================
-            // 4. SIMPAN DETAIL JASA
-            // =================================================
             if (!empty($request->service_ids)) {
                 foreach ($selectedServices as $service) {
                     TransactionService::create([
                         'transaction_id' => $transaction->id,
-                        'service_id'     => $service->id,
-                        'price_at_time'  => $service->price, // Harga saat transaksi terjadi
-                        'qty'            => 1
+                        'service_id' => $service->id,
+                        'price_at_time' => $service->price,
+                        'qty' => 1
                     ]);
                 }
             }
 
-            // =================================================
-            // 5. SIMPAN DETAIL SPAREPART & KURANGI STOK
-            // =================================================
             if (!empty($request->spare_parts)) {
                 foreach ($request->spare_parts as $item) {
                     $part = SparePart::find($item['id']);
-
-                    // Simpan detail
                     TransactionSparePart::create([
                         'transaction_id' => $transaction->id,
-                        'spare_part_id'  => $part->id,
-                        'qty'            => $item['qty'],
-                        'price_at_time'  => $part->sell_price, // Simpan harga saat ini
+                        'spare_part_id' => $part->id,
+                        'qty' => $item['qty'],
+                        'price_at_time' => $part->sell_price,
                     ]);
-
-                    // LOGIKA PENTING: Kurangi Stok!
                     $part->decrement('stock', $item['qty']);
                 }
             }
 
             DB::commit();
-            return redirect()->route('admin.transactions.index')
-                ->with('success', 'Transaksi berhasil dibuat! Total: Rp ' . number_format($totalPrice));
-
+            return redirect()->route('admin.transactions.index')->with('success', 'Transaksi berhasil dibuat!');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage())->withInput();
@@ -229,14 +175,16 @@ class AdminTransactionController extends Controller
      */
     public function edit(Transaction $transaction)
     {
-        // PERBAIKAN: Hapus .service pada 'services' karena ini relasi Many-to-Many
-        // 'services' sudah langsung mengembalikan objek Service
         $transaction->load([
             'customer' => function($q) { $q->withTrashed(); }, 
             'vehicle' => function($q) { $q->withTrashed(); }, 
             'mechanic' => function($q) { $q->withTrashed(); },
-            'services' => function($q) { $q->withTrashed(); }, // <--- INI YG BIKIN ERROR, SUDAH DIPERBAIKI (Hapus .service)
-            'spareParts.sparePart' => function($q) { $q->withTrashed(); }
+            // FIX: Tidak perlu .service, langsung services saja
+            'services' => function($q) { $q->withTrashed(); }, 
+            
+            // FIX TYPO FATAL DISINI:
+            // Kamu tulis 'sparePart' (singular), padahal nama function di Model 'spareParts' (plural)
+            'spareParts' => function($q) { $q->withTrashed(); } 
         ]);
         
         $services        = Service::where('is_active', true)->get();
@@ -252,9 +200,7 @@ class AdminTransactionController extends Controller
         ));
     }
 
-    /**
-     * Update Status Service.
-     */
+    // ... [Method update, updatePaymentStatus, destroy, show AMAN] ...
     public function update(Request $request, Transaction $transaction)
     {
         $request->validate([
@@ -273,9 +219,6 @@ class AdminTransactionController extends Controller
             ->with('success', 'Status transaksi #' . $transaction->id . ' diperbarui.');
     }
 
-    /**
-     * Update Pembayaran.
-     */
     public function updatePaymentStatus(Request $request, Transaction $transaction)
     {
         $request->validate([
@@ -283,78 +226,81 @@ class AdminTransactionController extends Controller
             'amount_paid'       => 'required|numeric|min:0',
         ]);
 
-        // Validasi pembayaran tidak boleh kurang dari total (Opsional)
-        if ($request->amount_paid < $transaction->total_amount) {
-             // return back()->with('error', 'Jumlah pembayaran kurang!'); // Aktifkan jika perlu
-        }
-
         $transaction->update([
             'payment_method_id' => $request->payment_method_id,
             'amount_paid'       => $request->amount_paid,
-            'payment_status_id' => 1, // ID 1 = Paid/Lunas (Sesuaikan dengan seeder kamu)
+            'payment_status_id' => 1,
         ]);
 
         return back()->with('success', 'Pembayaran berhasil dicatat.');
     }
 
-    /**
-     * Hapus Transaksi (Dan Kembalikan Stok).
-     */
     public function destroy(Transaction $transaction)
-    {
-        DB::beginTransaction();
-        try {
-            // 1. Kembalikan Stok Sparepart (Refund Stock)
-            // Load detail sparepart
-            $transaction->load('spareParts');
-            foreach ($transaction->spareParts as $detail) {
-                // Ambil item sparepart master (withTrashed jaga2 kalau masternya dihapus)
-                $part = SparePart::withTrashed()->find($detail->spare_part_id);
-                if ($part) {
-                    $part->increment('stock', $detail->qty);
-                }
-            }
-
-            // 2. Hapus Transaksi
-            $transaction->delete();
-
-            DB::commit();
-            return back()->with('success', 'Transaksi dihapus dan stok sparepart telah dikembalikan.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->with('error', 'Gagal menghapus: ' . $e->getMessage());
-        }
+{
+    // 1. Cek Status Lunas
+    if ($transaction->payment_status_id == 1) {
+        // UBAH PESANNYA BIAR LEBIH JELAS SOLUSINYA:
+        return back()->with('error', 'Transaksi LUNAS tidak bisa langsung dihapus demi keamanan data. Silakan ubah status menjadi "Belum Lunas" terlebih dahulu jika ingin menghapus.');
     }
+
+    DB::beginTransaction();
+    try {
+        // 2. Load relasi anak-anaknya
+        $transaction->load(['spareParts', 'services']);
+
+        // 3. Kembalikan Stok Sparepart & Hapus Pivot Sparepart
+        foreach ($transaction->spareParts as $detail) {
+            $part = SparePart::withTrashed()->find($detail->spare_part_id);
+            if ($part) {
+                $part->increment('stock', $detail->qty);
+            }
+            // Hapus baris di tabel transaction_spare_parts
+            // Kita pakai DB query biar cepat karena ini relasi BelongsToMany
+            DB::table('transaction_spare_parts')
+                ->where('transaction_id', $transaction->id)
+                ->where('spare_part_id', $detail->id)
+                ->delete();
+        }
+        
+        // ATAU CARA LEBIH CEPAT UNTUK MENGHAPUS SEMUA PIVOT:
+        // $transaction->spareParts()->detach(); <-- Ini menghapus semua hubungan di pivot sparepart
+        // $transaction->services()->detach();   <-- Ini menghapus semua hubungan di pivot services
+
+        // Kita pakai detach() saja biar bersih dan cepat
+        $transaction->spareParts()->detach(); 
+        $transaction->services()->detach();
+
+        // 4. Baru Hapus Transaksi Induk
+        $transaction->delete();
+
+        DB::commit();
+        return back()->with('success', 'Transaksi dihapus dan stok dikembalikan.');
+        
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return back()->with('error', 'Gagal menghapus: ' . $e->getMessage());
+    }
+}
 
     public function show(Transaction $transaction)
     {
         return redirect()->route('admin.transactions.edit', $transaction->id);
     }
 
-    /**
-     * Cetak Struk Transaksi.
-     */
     public function print(Transaction $transaction){
-    $transaction->load([
-        // 1. Relasi BelongsTo (Parent)
-        // Di Model Transaction.php sudah ada ->withTrashed(), jadi cukup panggil nama relasinya.
-        'customer', 
-        'vehicle', 
-        'mechanic', 
-        'paymentMethod',
+        $transaction->load([
+            'customer', 
+            'vehicle', 
+            'mechanic', 
+            'paymentMethod',
+            'services' => function($q) { 
+                $q->withTrashed(); 
+            },
+            'spareParts' => function($q) { 
+                $q->withTrashed(); 
+            }
+        ]);
 
-        // 2. Relasi BelongsToMany (Child)
-        // Di Model TIDAK ADA ->withTrashed() (bagus, biar pas input data baru gak muncul yg sampah).
-        // Maka KITA WAJIB pasang withTrashed() DISINI agar di struk tetap muncul.
-        'services' => function($q) { 
-            $q->withTrashed(); 
-        },
-        
-        'spareParts' => function($q) { 
-            $q->withTrashed(); 
-        }
-    ]);
-
-    return view('admin.transactions.print', compact('transaction'));
-}
+        return view('admin.transactions.print', compact('transaction'));
+    }
 }

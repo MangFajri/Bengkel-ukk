@@ -1,157 +1,127 @@
 <?php
 
-use App\Http\Controllers\Admin\AdminTransactionController;
+use App\Http\Controllers\ProfileController;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
+
+// --- CONTROLLERS ADMIN ---
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
-// --- KUMPULAN CONTROLLER BREEZE/PROFIL ---
-use App\Http\Controllers\Admin\PaymentMethodController;
-// --- KUMPULAN CONTROLLER ADMIN ---
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\SparePartController;
-use App\Http\Controllers\Admin\TransactionServiceController;
-use App\Http\Controllers\Admin\TransactionSparePartController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\VehicleController;
-use App\Http\Controllers\Customer\CustomerTransactionController;
-use App\Http\Controllers\Customer\DashboardController as CustomerDashboardController;
-use App\Http\Controllers\Customer\VehicleController as CustomerVehicleController;
-// --- KUMPULAN CONTROLLER MEKANIK ---
+use App\Http\Controllers\Admin\PaymentMethodController;
+use App\Http\Controllers\Admin\AdminTransactionController;
+use App\Http\Controllers\Admin\TransactionServiceController;
+use App\Http\Controllers\Admin\TransactionSparePartController;
+
+// --- CONTROLLERS MEKANIK ---
 use App\Http\Controllers\Mechanic\DashboardController as MechanicDashboardController;
 use App\Http\Controllers\Mechanic\JobController;
-// --- KUMPULAN CONTROLLER CUSTOMER ---
-use App\Http\Controllers\ProfileController;
-use App\Models\PaymentStatus;
-use App\Models\Transaction;
-// --- KUMPULAN MODEL (UNTUK LOGIKA RUTE) ---
-// !!! PERBAIKAN PENTING: 'app' menjadi 'App' (Case-sensitive) !!!
-use App\Models\User;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Route;
+
+// --- CONTROLLERS CUSTOMER ---
+use App\Http\Controllers\Customer\DashboardController as CustomerDashboardController;
+use App\Http\Controllers\Customer\VehicleController as CustomerVehicleController;
+use App\Http\Controllers\Customer\CustomerTransactionController;
+
 
 /*
 |--------------------------------------------------------------------------
 | Web Routes
 |--------------------------------------------------------------------------
-|
-| Di sinilah tempat mendaftarkan rute web untuk aplikasi.
-| Rute-rute ini dimuat oleh RouteServiceProvider dan semuanya akan
-| ditugaskan ke grup middleware "web".
-|
 */
 
-// Rute Halaman Utama (Landing Page)
+// Rute Halaman Utama
 Route::get('/', function () {
     return view('welcome');
 });
 
-// Rute Dashboard Utama (Setelah Login)
+// Rute Dashboard Utama (Redirect sesuai Role)
 Route::get('/dashboard', function () {
     $user = Auth::user();
-
-    if ($user->role === 'admin') {
-        return redirect()->route('admin.dashboard');
-    } elseif ($user->role === 'mechanic') {
-        return redirect()->route('mechanic.dashboard');
-    } elseif ($user->role === 'customer') {
-        return redirect()->route('customer.dashboard');
-    }
-
-    // Fallback jika peran tidak terdefinisi
+    if ($user->role === 'admin') return redirect()->route('admin.dashboard');
+    if ($user->role === 'mechanic') return redirect()->route('mechanic.dashboard');
+    if ($user->role === 'customer') return redirect()->route('customer.dashboard');
     return redirect('/');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-// Grup Rute yang Membutuhkan Otentikasi (Profil)
+
+// Profil (Breeze Default)
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
+
 // =================================================================
-// GRUP RUTE UNTUK ADMIN
+// 1. GRUP RUTE ADMIN
 // =================================================================
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
-
-    // Dashboard
+    
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
-   
 
-    // --- Master Data ---
+    // Master Data
     Route::resource('services', ServiceController::class);
     Route::resource('spare-parts', SparePartController::class);
     Route::resource('users', UserController::class);
     Route::resource('vehicles', VehicleController::class);
     Route::resource('payment-methods', PaymentMethodController::class);
 
-    // --- Transaksional ---
-    // (Rute 'transactions' hanya perlu didaftarkan SATU KALI)
+    // Transaksi Utama
     Route::resource('transactions', AdminTransactionController::class);
-
-    // Rute Detail Transaksi (Jasa & Sparepart)
-  // 1. Tambah & Hapus Jasa (Service)
-    // Kita sederhanakan URL-nya biar tidak butuh parameter {transaction} di URL
-    Route::post('transaction-services', [TransactionServiceController::class, 'store'])
-        ->name('transaction-services.store');
-        
-    Route::delete('transaction-services/{id}', [TransactionServiceController::class, 'destroy'])
-        ->name('transaction-services.destroy');
-
-    // 2. Tambah & Hapus Sparepart
-    Route::post('transaction-spare-parts', [TransactionSparePartController::class, 'store'])
-        ->name('transaction-spareparts.store');
-        
-    Route::delete('transaction-spare-parts/{id}', [TransactionSparePartController::class, 'destroy'])
-        ->name('transaction-spareparts.destroy');
-
-    // Rute Pembayaran
+    
+    // Fitur Bayar & Cetak
     Route::post('transactions/{transaction}/pay', [AdminTransactionController::class, 'updatePaymentStatus'])->name('transactions.updatePayment');
-    // Rute Cetak Struk
     Route::get('transactions/{transaction}/print', [AdminTransactionController::class, 'print'])->name('transactions.print');
+
+    // Detail Transaksi (Jasa & Sparepart) - API Style
+    Route::post('transaction-services', [TransactionServiceController::class, 'store'])->name('transaction-services.store');
+    Route::delete('transaction-services/{id}', [TransactionServiceController::class, 'destroy'])->name('transaction-services.destroy');
+
+    Route::post('transaction-spare-parts', [TransactionSparePartController::class, 'store'])->name('transaction-spareparts.store');
+    Route::delete('transaction-spare-parts/{id}', [TransactionSparePartController::class, 'destroy'])->name('transaction-spareparts.destroy');
 });
 
+
 // =================================================================
-// GRUP RUTE UNTUK MEKANIK
+// 2. GRUP RUTE MEKANIK (PERBAIKAN UTAMA DISINI)
 // =================================================================
 Route::middleware(['auth', 'role:mechanic'])->prefix('mechanic')->name('mechanic.')->group(function () {
 
-    // Dashboard
     Route::get('/dashboard', [MechanicDashboardController::class, 'index'])->name('dashboard');
 
-    // 1. Route Riwayat
+    // Riwayat Pekerjaan
     Route::get('/jobs/history', [JobController::class, 'history'])->name('jobs.history');
 
-    // 2. Route Update Status
-    Route::post('/jobs/{transaction}/update-status', [JobController::class, 'updateStatus'])->name('jobs.updateStatus');
+    // Update Status (Pakai PATCH agar sesuai dengan @method('PATCH') di view)
+    Route::patch('/jobs/{transaction}/update-status', [JobController::class, 'updateStatus'])->name('jobs.update-status');
 
-    // ==========================================
-    // 👇 TAMBAHKAN INI (PENYEBAB ERROR KAMU) 👇
-    // ==========================================
-    Route::post('/jobs/{transaction}/spareparts', [JobController::class, 'storeSparePart'])
-        ->name('jobs.spareparts.store'); // <-- Ini nama yang dicari error tadi
+    // === [REUSE LOGIC ADMIN UNTUK SPAREPART] ===
+    // Kita arahkan ke Controller Admin biar validasi stok & lunas tetap jalan
+    // URL kita buat simpel, transaction_id dikirim via input hidden di form
+    Route::post('/jobs/spare-parts', [TransactionSparePartController::class, 'store'])
+        ->name('spare-parts.store');
+        
+    Route::delete('/jobs/spare-parts/{id}', [TransactionSparePartController::class, 'destroy'])
+        ->name('spare-parts.destroy');
 
-    Route::delete('/jobs/{transaction}/spareparts/{sparepart}', [JobController::class, 'destroySparePart'])
-        ->name('jobs.spareparts.destroy');
-    // ==========================================
-    
-    // 3. Resource Controller (Standard CRUD)
+    // Resource Controller Jobs (Paling bawah biar ga konflik)
     Route::resource('jobs', JobController::class)
         ->only(['index', 'show'])
-        ->parameters(['jobs' => 'transaction']);
-
+        ->parameters(['jobs' => 'transaction']); // Biar variabel di controller namanya $transaction
 });
+
+
 // =================================================================
-// GRUP RUTE UNTUK PELANGGAN (CUSTOMER)
+// 3. GRUP RUTE CUSTOMER
 // =================================================================
 Route::middleware(['auth', 'role:customer'])->prefix('customer')->name('customer.')->group(function () {
 
     Route::get('/dashboard', [CustomerDashboardController::class, 'index'])->name('dashboard');
-
-    // --- PERBAIKAN DI SINI ---
-    // Gunakan 'resource' agar route create, store, dll otomatis ada.
+    
     Route::resource('transactions', CustomerTransactionController::class);
-    // -------------------------
-
     Route::resource('vehicles', CustomerVehicleController::class);
 });
 
-// Rute otentikasi yang dibuat oleh Laravel Breeze
 require __DIR__.'/auth.php';

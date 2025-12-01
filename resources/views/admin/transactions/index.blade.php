@@ -1,183 +1,213 @@
 @extends('layouts.admin')
 
-@section('title', 'Manajemen Transaksi')
+@section('title', 'Daftar Transaksi')
 
 @section('content')
+    <!-- Header Halaman -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800 font-weight-bold font-display text-uppercase">Riwayat Service & Transaksi</h1>
-        
-        <a href="{{ route('admin.transactions.create') }}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
-            <i class="fas fa-plus fa-sm text-white-50 mr-2"></i>Input Transaksi Baru
+        <h1 class="h3 mb-0 text-gray-100 font-weight-bold border-left-primary pl-3">Kelola Transaksi Service</h1>
+        <a href="{{ route('admin.transactions.create') }}" class="d-none d-sm-inline-block btn btn-primary shadow-sm">
+            <i class="fas fa-plus fa-sm text-white-50 mr-2"></i> Transaksi Baru
         </a>
     </div>
 
+    <!-- Notifikasi -->
     @if(session('success'))
-        <div class="alert alert-success border-0 text-white mb-4 shadow-sm" style="background-color: #16a34a;">
+        <div class="alert alert-success alert-dismissible fade show border-left-success shadow-sm" role="alert">
             <i class="fas fa-check-circle mr-2"></i> {{ session('success') }}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
         </div>
     @endif
 
     @if(session('error'))
-        <div class="alert alert-danger border-0 text-white mb-4 shadow-sm">
-            <i class="fas fa-exclamation-circle mr-2"></i> {{ session('error') }}
+        <div class="alert alert-danger alert-dismissible fade show border-left-danger shadow-sm" role="alert">
+            <i class="fas fa-exclamation-triangle mr-2"></i> {{ session('error') }}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
         </div>
     @endif
 
-    <div class="card shadow mb-4" style="border: 1px solid #e3e6f0;">
-        <div class="card-header py-3 bg-primary">
-            <h6 class="m-0 font-weight-bold text-white">Data Transaksi Terbaru</h6>
+    <!-- Tabel Transaksi -->
+    <div class="card shadow mb-4 border-bottom-primary" style="background-color: #1e293b; border: 1px solid #334155;">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between"
+            style="background-color: #1e293b; border-bottom: 1px solid #334155;">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-list-alt mr-1"></i> Data Semua Transaksi
+            </h6>
         </div>
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-bordered table-hover" id="dataTable" width="100%" cellspacing="0">
-                    
-                    <thead style="background-color: #1e293b; color: white;">
+                {{-- TABLE DARK MODE --}}
+                <table class="table table-hover text-gray-300" id="dataTable" width="100%" cellspacing="0"
+                    style="color: #e2e8f0;">
+                    <thead style="background-color: #0f172a; color: #fff;">
                         <tr>
-                            <th>ID</th>
-                            <th>Tanggal</th>
-                            <th>Customer</th>
-                            <th>Kendaraan</th>
-                            <th>Status Service</th>
-                            <th>Pembayaran</th>
-                            <th width="15%" class="text-center">Aksi</th>
+                            <th width="5%" style="border-bottom: 2px solid #334155; border-top: none;">No</th>
+                            <th width="12%" style="border-bottom: 2px solid #334155; border-top: none;">Kode/ID</th>
+                            <th width="15%" style="border-bottom: 2px solid #334155; border-top: none;">Tanggal</th>
+                            <th style="border-bottom: 2px solid #334155; border-top: none;">Pelanggan</th>
+                            <th style="border-bottom: 2px solid #334155; border-top: none;">Kendaraan</th>
+                            <th style="border-bottom: 2px solid #334155; border-top: none;">Mekanik</th>
+                            <th class="text-center" style="border-bottom: 2px solid #334155; border-top: none;">Status
+                                Service</th>
+                            <th class="text-center" style="border-bottom: 2px solid #334155; border-top: none;">Status Bayar
+                            </th>
+                            <th class="text-right" style="border-bottom: 2px solid #334155; border-top: none;">Total</th>
+                            <th width="10%" class="text-center" style="border-bottom: 2px solid #334155; border-top: none;">
+                                Aksi</th>
                         </tr>
                     </thead>
-                    
                     <tbody>
-                        @forelse($transactions as $trx)
-                        <tr>
-                            <td class="font-weight-bold text-primary">#{{ $trx->id }}</td>
-                            
-                            <td>
-                                {{ $trx->created_at->format('d M Y') }}
-                                <br>
-                                <small class="text-muted">{{ $trx->created_at->format('H:i') }} WIB</small>
-                            </td>
-
-                            <td>
-                                @if($trx->customer)
-                                    <span class="font-weight-bold">{{ $trx->customer->name }}</span>
-                                    @if($trx->customer->trashed())
-                                        <span class="badge badge-danger" style="font-size: 0.6em;">(Deleted)</span>
-                                    @endif
-                                    <div class="small text-muted">{{ $trx->customer->phone }}</div>
-                                @else
-                                    <span class="text-danger font-italic">Data User Hilang</span>
-                                @endif
-                            </td>
-
-                            <td>
-                                @if($trx->vehicle)
-                                    <div class="badge badge-secondary text-uppercase">{{ $trx->vehicle->plate_number }}</div>
-                                    @if($trx->vehicle->trashed())
-                                        <span class="text-danger font-weight-bold" title="Data dihapus">*</span>
-                                    @endif
-                                    <div class="small mt-1">{{ $trx->vehicle->brand }} {{ $trx->vehicle->model }}</div>
-                                @else
-                                    <span class="small text-muted">Tanpa Kendaraan</span>
-                                @endif
-                            </td>
-
-                            <td class="text-center">
-                                @php
-                                    // 1. Ambil nama dari database jika ada
-                                    $statusName = $trx->serviceStatus->name ?? null;
-                                    $id = $trx->service_status_id;
-
-                                    // 2. FIX LOGIKA ID MANUAL (Sesuai database kamu)
-                                    if (!$statusName) {
-                                        if ($id == 1) $statusName = 'Pending';
-                                        elseif ($id == 2) $statusName = 'Dikonfirmasi';
-                                        elseif ($id == 3) $statusName = 'Sedang Dikerjakan'; // ID 3 = Working
-                                        elseif ($id == 4) $statusName = 'Selesai';           // ID 4 = Done
-                                        elseif ($id == 5) $statusName = 'Sudah Diambil';     // ID 5 = Taken
-                                        elseif ($id == 6) $statusName = 'Dibatalkan';
-                                        else $statusName = 'Status #' . $id;
-                                    }
-
-                                    // 3. Tentukan Warna Badge
-                                    $statusClass = 'secondary';
-                                    $checkName = strtolower($statusName);
-
-                                    if(str_contains($checkName, 'selesai') || str_contains($checkName, 'diambil')) 
-                                        $statusClass = 'success'; // Hijau
-                                    elseif(str_contains($checkName, 'kerja') || str_contains($checkName, 'working')) 
-                                        $statusClass = 'info';    // Biru Muda
-                                    elseif(str_contains($checkName, 'batal')) 
-                                        $statusClass = 'danger';  // Merah
-                                    elseif(str_contains($checkName, 'tunggu') || str_contains($checkName, 'pending')) 
-                                        $statusClass = 'warning'; // Kuning
-                                @endphp
-                                
-                                <span class="badge badge-{{ $statusClass }} px-2 py-1" style="font-size: 0.85rem;">
-                                    {{ $statusName }}
-                                </span>
-                                
-                                @if($trx->mechanic)
-                                    <div class="small text-muted mt-1">
-                                        <i class="fas fa-wrench fa-xs"></i> {{ $trx->mechanic->name }}
+                        @forelse($transactions as $transaction)
+                            <tr style="border-bottom: 1px solid #334155;">
+                                <td class="align-middle">{{ $loop->iteration }}</td>
+                                <td class="align-middle">
+                                    <span class="font-weight-bold text-primary">#{{ $transaction->id }}</span>
+                                </td>
+                                <td class="align-middle text-gray-400" style="font-size: 0.85rem;">
+                                    <div style="line-height: 1.2;">
+                                        {{-- Tampilkan Tanggal --}}
+                                        <div class="font-weight-bold text-gray-300">
+                                            {{ $transaction->created_at->translatedFormat('d M Y') }}
+                                        </div>
+                                        {{-- Tampilkan Jam (di baris bawah biar rapi) --}}
+                                        <div class="text-info">
+                                            <i class="far fa-clock mr-1"></i>
+                                            {{ $transaction->created_at->format('H:i') }} WIB
+                                        </div>
                                     </div>
-                                @else
-                                    <div class="small text-danger mt-1 font-italic">Mekanik belum ada</div>
-                                @endif
-                            </td>
+                                </td>
 
-                            <td class="text-center">
-                                @if(($trx->paymentStatus->code ?? '') == 'paid')
-                                    <span class="badge badge-success">LUNAS</span>
-                                @else
-                                    <span class="badge badge-danger">BELUM LUNAS</span>
-                                @endif
-                                <div class="font-weight-bold mt-1 text-gray-800">
-                                    Rp {{ number_format($trx->total_amount, 0, ',', '.') }}
-                                </div>
-                            </td>
+                                {{-- Pelanggan --}}
+                                <td class="align-middle">
+                                    <div class="font-weight-bold text-white">
+                                        {{ $transaction->customer->name ?? 'Umum/Terhapus' }}</div>
+                                </td>
 
-                            <td class="text-center">
-                                <div class="btn-group" role="group">
-                                    <a href="{{ route('admin.transactions.edit', $trx->id) }}" class="btn btn-primary btn-sm" title="Proses & Bayar">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <a href="{{ route('admin.transactions.print', $trx->id) }}" target="_blank" class="btn btn-info btn-sm" title="Cetak Struk">
-                                        <i class="fas fa-print"></i>
-                                    </a>
-                                    <form action="{{ route('admin.transactions.destroy', $trx->id) }}" method="POST" class="d-inline" onsubmit="return confirm('PERINGATAN: Menghapus transaksi akan MENGEMBALIKAN STOK barang. Lanjutkan?');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-danger btn-sm" title="Hapus">
-                                            <i class="fas fa-trash"></i>
+                                {{-- Kendaraan --}}
+                                <td class="align-middle">
+                                    @if($transaction->vehicle)
+                                        <div class="badge badge-secondary border border-gray-600 text-white font-weight-bold px-2">
+                                            {{ $transaction->vehicle->plate_number }}
+                                        </div>
+                                        <div class="small text-gray-400 mt-1">
+                                            {{ $transaction->vehicle->brand }} {{ $transaction->vehicle->model }}
+                                        </div>
+                                    @else
+                                        <span class="text-muted font-italic">-</span>
+                                    @endif
+                                </td>
+
+                                {{-- Mekanik --}}
+                                <td class="align-middle">
+                                    @if($transaction->mechanic)
+                                        <span class="text-gray-300"><i class="fas fa-user-cog mr-1 text-info"></i>
+                                            {{ $transaction->mechanic->name }}</span>
+                                    @else
+                                        <span class="badge badge-dark border border-secondary text-gray-500">Belum Ada</span>
+                                    @endif
+                                </td>
+
+                                {{-- Status Service --}}
+                                <td class="align-middle text-center">
+                                    @php
+                                        $statusName = strtolower($transaction->serviceStatus->label ?? 'unknown');
+                                        [$badgeColor, $icon] = match (true) {
+                                            str_contains($statusName, 'selesai') => ['success', 'check-circle'],
+                                            str_contains($statusName, 'kerja') => ['info', 'tools'],
+                                            str_contains($statusName, 'proses') => ['primary', 'cogs'],
+                                            str_contains($statusName, 'tunggu') => ['warning', 'clock'],
+                                            str_contains($statusName, 'pending') => ['warning', 'hourglass-start'],
+                                            str_contains($statusName, 'batal') => ['danger', 'times-circle'],
+                                            default => ['secondary', 'question-circle']
+                                        };
+                                    @endphp
+                                    <span class="badge badge-{{ $badgeColor }} px-2 py-1 shadow-sm">
+                                        <i class="fas fa-{{ $icon }} mr-1"></i> {{ $transaction->serviceStatus->label ?? '-' }}
+                                    </span>
+                                </td>
+
+                                {{-- Status Pembayaran --}}
+                                <td class="align-middle text-center">
+                                    @if($transaction->payment_status_id == 1)
+                                        <span class="badge badge-success px-2 py-1 border border-success">
+                                            <i class="fas fa-check mr-1"></i> LUNAS
+                                        </span>
+                                    @else
+                                        <span class="badge badge-danger px-2 py-1 border border-danger">
+                                            <i class="fas fa-times mr-1"></i> BELUM
+                                        </span>
+                                    @endif
+                                </td>
+
+                                <td class="align-middle text-right font-weight-bold text-success">
+                                    Rp {{ number_format($transaction->total_amount, 0, ',', '.') }}
+                                </td>
+
+                                <td class="align-middle text-center">
+                                    <div class="dropdown no-arrow">
+                                        <button class="btn btn-secondary btn-sm dropdown-toggle border-0" type="button"
+                                            id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true"
+                                            aria-expanded="false" style="background-color: #334155;">
+                                            <i class="fas fa-ellipsis-v text-white"></i>
                                         </button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
+                                        <div class="dropdown-menu shadow animated--fade-in" aria-labelledby="dropdownMenuButton"
+                                            style="background-color: #1e293b; border: 1px solid #334155;">
+                                            <div class="dropdown-header text-gray-400">Aksi:</div>
+
+                                            <a class="dropdown-item text-warning"
+                                                href="{{ route('admin.transactions.edit', $transaction->id) }}">
+                                                <i class="fas fa-edit fa-sm fa-fw mr-2"></i> Edit Detail
+                                            </a>
+
+                                            @if($transaction->payment_status_id == 1)
+                                                <a class="dropdown-item text-info"
+                                                    href="{{ route('admin.transactions.print', $transaction->id) }}"
+                                                    target="_blank">
+                                                    <i class="fas fa-print fa-sm fa-fw mr-2"></i> Cetak Struk
+                                                </a>
+                                            @else
+                                                <a class="dropdown-item disabled text-gray-600" href="#" tabindex="-1"
+                                                    aria-disabled="true">
+                                                    <i class="fas fa-print fa-sm fa-fw mr-2"></i> Cetak (Belum Lunas)
+                                                </a>
+                                            @endif
+
+                                            <div class="dropdown-divider" style="border-top: 1px solid #334155;"></div>
+
+                                            <form action="{{ route('admin.transactions.destroy', $transaction->id) }}"
+                                                method="POST" class="d-inline block">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="dropdown-item text-danger"
+                                                    onclick="return confirm('Yakin hapus transaksi ini? Stok akan dikembalikan.');">
+                                                    <i class="fas fa-trash fa-sm fa-fw mr-2"></i> Hapus
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
                         @empty
-                        <tr>
-                            <td colspan="7" class="text-center py-5 text-gray-500">
-                                <img src="{{ asset('img/undraw_empty.svg') }}" style="height: 100px; opacity: 0.5;" class="mb-3 d-block mx-auto">
-                                Belum ada data transaksi.
-                            </td>
-                        </tr>
+                            <tr>
+                                <td colspan="10" class="text-center text-gray-500 py-5">
+                                    <img src="{{ asset('img/undraw_empty.svg') }}" alt="Empty"
+                                        style="height: 100px; opacity: 0.5;" class="mb-3">
+                                    <p class="mb-0">Belum ada data transaksi hari ini.</p>
+                                </td>
+                            </tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
-            <div class="mt-3 d-flex justify-content-end">
+
+            {{-- Pagination --}}
+            <div class="mt-4 d-flex justify-content-end">
                 {{ $transactions->links() }}
             </div>
         </div>
     </div>
 @endsection
-
-@push('scripts')
-<script>
-    $(document).ready(function() {
-        $('#dataTable').DataTable({
-            "order": [[ 0, "desc" ]],
-            "language": {
-                "url": "//cdn.datatables.net/plug-ins/1.10.21/i18n/Indonesian.json"
-            }
-        });
-    });
-</script>
-@endpush

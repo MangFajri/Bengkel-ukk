@@ -6,44 +6,57 @@ use App\Http\Controllers\Controller;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class VehicleController extends Controller
 {
     public function index()
-    {
-        $vehicles = Vehicle::where('user_id', Auth::id())->latest()->get();
-        return view('customer.vehicles.index', compact('vehicles'));
-    }
+{
+    // LOGIC PRO: Eager Loading "is_being_serviced"
+    // Kita minta database: "Ambil mobil user ini, SEKALIAN cek ada gak transaksi yang statusnya < 4?"
+    // Hasilnya nanti berupa boolean true/false di atribut 'is_being_serviced'
+    
+    $vehicles = Vehicle::where('user_id', Auth::id())
+        ->withExists(['transactions as is_being_serviced' => function ($query) {
+            $query->where('service_status_id', '<', 4); // Filter status aktif
+        }])
+        ->latest()
+        ->get();
+
+    return view('customer.vehicles.index', compact('vehicles'));
+}
 
     public function create()
     {
         return view('customer.vehicles.create');
     }
 
-    public function store(Request $request)
+   public function store(Request $request)
     {
         $request->validate([
             'brand' => 'required|string|max:255',
             'model' => 'required|string|max:255',
-            // Perbaikan: Pastikan unique cek ke tabel vehicles kolom plate_number
-            'plate_number' => 'required|string|max:20|unique:vehicles,plate_number',
+            // FIX LOGIKA: Abaikan yang sudah dihapus (Soft Deletes)
+            'plate_number' => [
+                'required', 
+                'string', 
+                'max:20',
+                Rule::unique('vehicles')->whereNull('deleted_at')
+            ],
             'year' => 'required|integer|min:1900|max:' . (date('Y') + 1),
             'color' => 'nullable|string|max:50',
-            // Pastikan field ini ada di database jika mau dipakai
-            'engine_number' => 'nullable|string|max:100',
-            'chassis_number' => 'nullable|string|max:100',
         ]);
 
         Vehicle::create([
             'user_id' => Auth::id(),
             'brand' => $request->brand,
             'model' => $request->model,
-            'plate_number' => $request->plate_number,
+            'plate_number' => strtoupper($request->plate_number), // Paksa Uppercase biar rapi
             'year' => $request->year,
             'color' => $request->color,
-            // Hapus dua baris bawah ini jika database belum di-migrate
-            'engine_number' => $request->engine_number,
-            'chassis_number' => $request->chassis_number,
+            // Field optional jika ada di form
+            'engine_number' => $request->engine_number ?? null, 
+            'chassis_number' => $request->chassis_number ?? null,
         ]);
 
         return redirect()->route('customer.vehicles.index')
@@ -64,20 +77,29 @@ class VehicleController extends Controller
             abort(403);
         }
 
-        // MASALAH UTAMA KAMU DISINI SEBELUMNYA (license_plate vs plate_number)
         $request->validate([
             'brand' => 'required|string|max:255',
             'model' => 'required|string|max:255',
-            'plate_number' => 'required|string|max:20|unique:vehicles,plate_number,' . $vehicle->id,
+            // FIX LOGIKA UPDATE: 
+            // 1. Ignore ID mobil ini sendiri (biar gak error kalau gak ganti plat)
+            // 2. Abaikan sampah (deleted_at)
+            'plate_number' => [
+                'required', 
+                'string', 
+                'max:20',
+                Rule::unique('vehicles')->ignore($vehicle->id)->whereNull('deleted_at')
+            ],
             'year' => 'required|integer',
             'color' => 'nullable|string|max:50',
         ]);
 
-        // Update data aman
-        $vehicle->update($request->only([
-            'brand', 'model', 'plate_number', 'year', 'color', 
-            'engine_number', 'chassis_number'
-        ]));
+        $vehicle->update([
+            'brand' => $request->brand,
+            'model' => $request->model,
+            'plate_number' => strtoupper($request->plate_number),
+            'year' => $request->year,
+            'color' => $request->color,
+        ]);
 
         return redirect()->route('customer.vehicles.index')
             ->with('success', 'Data kendaraan diperbarui.');

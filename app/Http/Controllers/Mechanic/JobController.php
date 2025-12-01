@@ -5,8 +5,11 @@ namespace App\Http\Controllers\Mechanic;
 use App\Http\Controllers\Controller;
 use App\Models\Transaction;
 use App\Models\ServiceStatus;
+use App\Models\SparePart; // Tambahkan ini
+use App\Models\TransactionSparePart; // Tambahkan ini
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class JobController extends Controller
 {
@@ -33,23 +36,35 @@ class JobController extends Controller
     /**
      * Tampilkan detail satu pekerjaan (Saat klik tombol "Kerjakan").
      */
-    public function show($id)
+   public function show($id)
     {
-        // Validasi: Pastikan job ini punya saya
         $transaction = Transaction::with([
                 'services', 
                 'spareParts', 
-                // PENTING: withTrashed() mencegah error "property name on null"
                 'customer' => function($q) { $q->withTrashed(); }, 
-                'vehicle' => function($q) { $q->withTrashed(); }
+                'vehicle' => function($q) { $q->withTrashed(); },
+                'serviceStatus'
             ])
             ->where('id', $id)
             ->where('mechanic_id', Auth::id())
-            ->firstOrFail(); // 404 jika mencoba akses job orang lain
+            ->firstOrFail();
 
-        $statuses = ServiceStatus::all(); // Untuk dropdown update status
+        // --- [LOGIC BARU: BATASI STATUS MEKANIK] ---
+        // Mekanik cuma butuh status: 
+        // 3 (Sedang Dikerjakan) dan 4 (Selesai)
+        // Kita juga sertakan status saat ini agar tidak error di dropdown
+        
+        $allowedStatusIds = [3, 4]; 
+        // Tambahkan status saat ini ke list (misal saat ini statusnya 'Menunggu' (2), dia harus tetap muncul)
+        if (!in_array($transaction->service_status_id, $allowedStatusIds)) {
+            $allowedStatusIds[] = $transaction->service_status_id;
+        }
 
-        return view('mechanic.jobs.show', compact('transaction', 'statuses'));
+        $statuses = ServiceStatus::whereIn('id', $allowedStatusIds)->get();
+        
+        $availableSpareParts = SparePart::where('stock', '>', 0)->where('is_active', true)->get();
+
+        return view('mechanic.jobs.show', compact('transaction', 'statuses', 'availableSpareParts'));
     }
 
     /**
@@ -80,7 +95,8 @@ class JobController extends Controller
         // PERBAIKAN: Nama variabel disesuaikan dengan View ($historyJobs)
         $historyJobs = Transaction::with([
                 'customer' => function($q) { $q->withTrashed(); }, 
-                'vehicle' => function($q) { $q->withTrashed(); }
+                'vehicle' => function($q) { $q->withTrashed(); },
+                'serviceStatus'
             ])
             ->where('mechanic_id', Auth::id())
             // Asumsi: Job masuk history kalau status servis 'Selesai' (ID 4) atau Bayar Lunas (ID 1)
@@ -93,8 +109,8 @@ class JobController extends Controller
         return view('mechanic.jobs.history', compact('historyJobs'));
     }
 
-    /**
-     * FITUR BARU: Tambah Sparepart ke Transaksi
+   /**
+     * FITUR BARU: Tambah Sparepart ke Transaksi (Safe Stock Version)
      */
     public function storeSparePart(Request $request, $transactionId)
     {
@@ -102,41 +118,91 @@ class JobController extends Controller
             'spare_part_id' => 'required|exists:spare_parts,id',
             'qty' => 'required|integer|min:1',
         ]);
+        
+        $transaction = Transaction::where('id', $transactionId)
+            ->where('mechanic_id', Auth::id())
+            ->firstOrFail();
 
-        // Ambil harga saat ini dari master sparepart
-        $part = \App\Models\SparePart::findOrFail($request->spare_part_id);
-
-        // Cek stok cukup gak?
-        if($part->stock < $request->qty) {
-            return back()->with('error', 'Stok tidak cukup!');
+        if ($transaction->payment_status_id == 1) {
+            return back()->with('error', 'Transaksi sudah LUNAS! Tidak bisa menambah item.');
         }
 
-        // Simpan ke Pivot Table
-        // MAGIC: Model TransactionSparePart (Level 2) akan otomatis kurangi stok & update total harga!
-        \App\Models\TransactionSparePart::create([
-            'transaction_id' => $transactionId,
-            'spare_part_id'  => $part->id,
-            'qty'            => $request->qty,
-            'price_at_time'  => $part->sell_price, // Pastikan kolom di DB namanya 'price' atau 'sell_price'
-        ]);
+        DB::beginTransaction();
+        try {
+            // LOCK FOR UPDATE: Kunci baris stok agar tidak ada yang bisa ambil bersamaan
+            $part = SparePart::where('id', $request->spare_part_id)->lockForUpdate()->firstOrFail();
 
-        return back()->with('success', 'Sparepart berhasil ditambahkan.');
+            if($part->stock < $request->qty) {
+                return back()->with('error', 'Stok tidak cukup! Sisa: ' . $part->stock);
+            }
+
+            TransactionSparePart::create([
+                'transaction_id' => $transactionId,
+                'spare_part_id'  => $part->id,
+                'qty'            => $request->qty,
+                'price_at_time'  => $part->sell_price ?? $part->price, 
+            ]);
+
+            $part->decrement('stock', $request->qty);
+            
+            $this->updateTransactionTotal($transactionId);
+
+            DB::commit();
+            return back()->with('success', 'Sparepart berhasil ditambahkan.');
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
     }
 
-    /**
-     * FITUR BARU: Hapus Sparepart (Stok otomatis balik)
-     */
     public function destroySparePart($transactionId, $sparePartId)
     {
-        // Cari item di tabel pivot
-        $item = \App\Models\TransactionSparePart::where('transaction_id', $transactionId)
-                ->where('id', $sparePartId) // Pastikan yang dikirim ID pivot, bukan ID master barang
+        $transaction = Transaction::where('id', $transactionId)
+            ->where('mechanic_id', Auth::id())
+            ->firstOrFail();
+            
+        if ($transaction->payment_status_id == 1) {
+            return back()->with('error', 'Transaksi sudah LUNAS! Tidak bisa menghapus item.');
+        }
+
+        $item = TransactionSparePart::where('id', $sparePartId)
+                ->where('transaction_id', $transactionId)
                 ->firstOrFail();
 
-        // Hapus item
-        // MAGIC: Model Event akan otomatis balikin stok & kurangi total harga!
-        $item->delete();
+        DB::beginTransaction();
+        try {
+            $part = SparePart::where('id', $item->spare_part_id)->lockForUpdate()->first();
+            if($part) {
+                $part->increment('stock', $item->qty);
+            }
+    
+            $item->delete();
+            $this->updateTransactionTotal($transactionId);
+    
+            DB::commit();
+            return back()->with('success', 'Sparepart dibatalkan.');
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Gagal: ' . $e->getMessage());
+        }
+    }
+    
+    private function updateTransactionTotal($transactionId)
+    {
+        $totalService = DB::table('transaction_services')
+            ->where('transaction_id', $transactionId)
+            ->select(DB::raw('SUM(price_at_time * qty) as total'))
+            ->value('total');
 
-        return back()->with('success', 'Sparepart dibatalkan.');
+        $totalParts = DB::table('transaction_spare_parts')
+            ->where('transaction_id', $transactionId)
+            ->select(DB::raw('SUM(price_at_time * qty) as total'))
+            ->value('total');
+
+        DB::table('transactions')
+            ->where('id', $transactionId)
+            ->update(['total_amount' => ($totalService + $totalParts)]);
     }
 }
