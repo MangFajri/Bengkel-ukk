@@ -1,4 +1,4 @@
-<ul class="navbar-nav sidebar sidebar-dark accordion" id="accordionSidebar" 
+<ul class="navbar-nav sidebar sidebar-dark accordion" id="accordionSidebar"
     style="background-color: #1e293b; border-right: 1px solid #334155;">
 
     <!-- Sidebar - Brand -->
@@ -55,7 +55,8 @@
     </div>
 
     <!-- Nav Item - Collapse Menu Inventori -->
-    <li class="nav-item {{ request()->routeIs('admin.spare-parts.*') || request()->routeIs('admin.services.*') ? 'active' : '' }}">
+    <li
+        class="nav-item {{ request()->routeIs('admin.spare-parts.*') || request()->routeIs('admin.services.*') ? 'active' : '' }}">
         <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseInventory"
             aria-expanded="true" aria-controls="collapseInventory">
             <i class="fas fa-fw fa-boxes text-warning"></i>
@@ -64,10 +65,10 @@
         <div id="collapseInventory" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
             <div class="py-2 collapse-inner rounded border border-secondary" style="background-color: #0f172a;">
                 <h6 class="collapse-header text-gray-400">Stok & Harga:</h6>
-                <a class="collapse-item text-gray-300 {{ request()->routeIs('admin.spare-parts.*') ? 'active font-weight-bold text-white' : '' }}" 
-                   href="{{ route('admin.spare-parts.index') }}">Sparepart (Barang)</a>
-                <a class="collapse-item text-gray-300 {{ request()->routeIs('admin.services.*') ? 'active font-weight-bold text-white' : '' }}" 
-                   href="{{ route('admin.services.index') }}">Jasa Service</a>
+                <a class="collapse-item text-gray-300 {{ request()->routeIs('admin.spare-parts.*') ? 'active font-weight-bold text-white' : '' }}"
+                    href="{{ route('admin.spare-parts.index') }}">Sparepart (Barang)</a>
+                <a class="collapse-item text-gray-300 {{ request()->routeIs('admin.services.*') ? 'active font-weight-bold text-white' : '' }}"
+                    href="{{ route('admin.services.index') }}">Jasa Service</a>
             </div>
         </div>
     </li>
@@ -82,8 +83,8 @@
         <div id="collapseFinance" class="collapse" aria-labelledby="headingFinance" data-parent="#accordionSidebar">
             <div class="py-2 collapse-inner rounded border border-secondary" style="background-color: #0f172a;">
                 <h6 class="collapse-header text-gray-400">Metode & Promo:</h6>
-                <a class="collapse-item text-gray-300 {{ request()->routeIs('admin.payment-methods.*') ? 'active font-weight-bold text-white' : '' }}" 
-                   href="{{ route('admin.payment-methods.index') }}">Metode Pembayaran</a>
+                <a class="collapse-item text-gray-300 {{ request()->routeIs('admin.payment-methods.*') ? 'active font-weight-bold text-white' : '' }}"
+                    href="{{ route('admin.payment-methods.index') }}">Metode Pembayaran</a>
                 {{-- Placeholder Promo (Bisa diaktifkan nanti) --}}
                 {{-- <a class="collapse-item text-gray-300" href="#">Kode Promo (Soon)</a> --}}
             </div>
@@ -92,20 +93,27 @@
 
     <!-- Nav Item - Collapse Pengguna -->
     <li class="nav-item {{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
-        <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseUser"
-            aria-expanded="true" aria-controls="collapseUser">
+        <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseUser" aria-expanded="true"
+            aria-controls="collapseUser">
             <i class="fas fa-fw fa-users-cog text-danger"></i>
             <span class="font-weight-bold">Pengguna & Akses</span>
         </a>
         <div id="collapseUser" class="collapse" aria-labelledby="headingUtilities" data-parent="#accordionSidebar">
             <div class="py-2 collapse-inner rounded border border-secondary" style="background-color: #0f172a;">
                 <h6 class="collapse-header text-gray-400">Role User:</h6>
-                <a class="collapse-item text-gray-300 {{ request()->routeIs('admin.users.*') ? 'active font-weight-bold text-white' : '' }}" 
-                   href="{{ route('admin.users.index') }}">Kelola User & Hak Akses</a>
+                <a class="collapse-item text-gray-300 {{ request()->routeIs('admin.users.*') ? 'active font-weight-bold text-white' : '' }}"
+                    href="{{ route('admin.users.index') }}">Kelola User & Hak Akses</a>
             </div>
         </div>
     </li>
-
+    
+    <!-- Nav Item - Log Aktivitas Sistem -->
+    <li class="nav-item {{ request()->routeIs('admin.logs.*') ? 'active' : '' }}">
+        <a class="nav-link" href="{{ route('admin.logs.index') }}">
+            <i class="fas fa-fw fa-history text-light"></i>
+            <span class="font-weight-bold">Activity Log</span>
+        </a>
+    </li>
     <!-- Divider -->
     <hr class="sidebar-divider d-none d-md-block" style="border-color: #334155;">
 
@@ -126,10 +134,10 @@
 <style>
     .sidebar-dark .nav-item.active .nav-link {
         color: #fff !important;
-        background-color: rgba(255, 255, 255, 0.1) !important; 
+        background-color: rgba(255, 255, 255, 0.1) !important;
         border-left: 4px solid #4e73df;
     }
-    
+
     .sidebar-dark .nav-item .nav-link:hover {
         color: #e2e8f0 !important;
         background-color: rgba(255, 255, 255, 0.05);

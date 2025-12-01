@@ -4,16 +4,14 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Transaction;
-use App\Models\SparePart; // Pastikan import Model
-use App\Models\TransactionSparePart; // Pastikan import Model Pivot
+use App\Models\SparePart;
+use App\Models\TransactionSparePart;
+use App\Models\ActivityLog; 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class TransactionSparePartController extends Controller
 {
-    /**
-     * Simpan Sparepart ke Transaksi
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -33,7 +31,6 @@ class TransactionSparePartController extends Controller
 
         try {
             // 1. Ambil data Sparepart dengan LOCK FOR UPDATE
-            // Ini mencegah dua user mengedit stok barang yang sama di waktu bersamaan
             $sparePart = SparePart::where('id', $request->spare_part_id)->lockForUpdate()->first();
 
             if (! $sparePart) {
@@ -47,7 +44,6 @@ class TransactionSparePartController extends Controller
 
             // --- DETEKSI HARGA JUAL (SELL PRICE) ---
             $priceToCharge = $sparePart->sell_price ?? $sparePart->price ?? 0;
-            // ---------------------------------------
 
             // 3. Insert ke Pivot Table
             TransactionSparePart::create([
@@ -62,6 +58,12 @@ class TransactionSparePartController extends Controller
 
             // 5. Update Total Harga di Transaksi Induk
             $this->updateTransactionTotal($request->transaction_id);
+
+            // [CCTV] Catat Penambahan Barang
+            ActivityLog::record(
+                "Menambahkan {$request->qty}x {$sparePart->name} ke Transaksi #{$request->transaction_id}",
+                ['spare_part_id' => $sparePart->id, 'qty' => $request->qty]
+            );
 
             DB::commit();
             return back()->with('success', 'Sparepart berhasil ditambahkan: '.$sparePart->name);
@@ -84,17 +86,20 @@ class TransactionSparePartController extends Controller
                 return back()->with('error', 'Data tidak ditemukan.');
             }
 
-            // === [FIX KEAMANAN PENTING] ===
+            // Cek Transaksi Induk (Security Check)
             $transaction = Transaction::where('id', $item->transaction_id)->first();
             
             if ($transaction && $transaction->payment_status_id == 1) {
                 return back()->with('error', 'Transaksi sudah LUNAS! Item tidak bisa dihapus.');
             }
-            // ==============================
 
             $transactionId = $item->transaction_id;
+            
+            // [PERBAIKAN DISINI] Ambil nama barang DULU sebelum dihapus itemnya
+            // Kita gunakan optional() jaga-jaga kalau master barangnya udah dihapus (soft delete)
+            $partName = optional($item->sparePart)->name ?? 'Barang Terhapus';
 
-            // Kembalikan Stok (Gunakan lock juga biar aman walau jarang konflik di sini)
+            // Kembalikan Stok (Gunakan lock juga biar aman)
             $part = SparePart::where('id', $item->spare_part_id)->lockForUpdate()->first();
             if ($part) {
                 $part->increment('stock', $item->qty);
@@ -105,6 +110,12 @@ class TransactionSparePartController extends Controller
 
             // Recalculate Total
             $this->updateTransactionTotal($transactionId);
+
+            // [CCTV] Catat Penghapusan Barang
+            ActivityLog::record(
+                "Membatalkan/Hapus {$item->qty}x {$partName} dari Transaksi #{$transactionId}",
+                ['item_id' => $id, 'qty' => $item->qty]
+            );
 
             DB::commit();
             return back()->with('success', 'Sparepart dihapus & Stok dikembalikan.');
@@ -117,19 +128,16 @@ class TransactionSparePartController extends Controller
 
     private function updateTransactionTotal($transactionId)
     {
-        // Logic hitung total service
         $totalService = DB::table('transaction_services')
             ->where('transaction_id', $transactionId)
             ->select(DB::raw('SUM(price_at_time * qty) as total'))
             ->value('total');
 
-        // Logic hitung total sparepart
         $totalParts = DB::table('transaction_spare_parts')
             ->where('transaction_id', $transactionId)
             ->select(DB::raw('SUM(price_at_time * qty) as total'))
             ->value('total');
 
-        // Update transaksi
         DB::table('transactions')
             ->where('id', $transactionId)
             ->update(['total_amount' => ($totalService + $totalParts)]);

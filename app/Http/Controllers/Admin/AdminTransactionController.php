@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Service;
 use App\Models\SparePart;
+use App\Models\ActivityLog;
 use App\Models\Transaction;
 use App\Models\TransactionService;
 use App\Models\TransactionSparePart;
@@ -21,7 +22,9 @@ use Illuminate\Validation\Rule;
 
 class AdminTransactionController extends Controller
 {
-    // ... [Code index & create tetap sama] ...
+    /**
+     * Tampilkan daftar transaksi.
+     */
     
     public function index()
     {
@@ -31,7 +34,9 @@ class AdminTransactionController extends Controller
         
         return view('admin.transactions.index', compact('transactions'));
     }
-
+    /**
+     * Tampilkan form buat transaksi baru.
+     */
     public function create()
     {
         $customers = User::where('role', 'customer')->get();
@@ -43,7 +48,9 @@ class AdminTransactionController extends Controller
         return view('admin.transactions.create', compact('customers', 'mechanics', 'vehicles', 'services', 'spareParts'));
     }
 
-    // ... [Code store tetap sama, sudah aman] ...
+    /**
+     * Simpan transaksi baru.
+     */
     public function store(Request $request)
     {
         // Copy paste method store kamu yang tadi, itu sudah valid.
@@ -199,8 +206,10 @@ class AdminTransactionController extends Controller
             'paymentMethods', 'paymentStatuses', 'serviceStatuses'
         ));
     }
-
-    // ... [Method update, updatePaymentStatus, destroy, show AMAN] ...
+    /**
+     * Update status transaksi.
+     */
+    
     public function update(Request $request, Transaction $transaction)
     {
         $request->validate([
@@ -218,7 +227,9 @@ class AdminTransactionController extends Controller
         return redirect()->route('admin.transactions.index')
             ->with('success', 'Status transaksi #' . $transaction->id . ' diperbarui.');
     }
-
+    /**
+     * Update status pembayaran menjadi LUNAS.
+     */
     public function updatePaymentStatus(Request $request, Transaction $transaction)
     {
         $request->validate([
@@ -236,52 +247,55 @@ class AdminTransactionController extends Controller
     }
 
     public function destroy(Transaction $transaction)
-{
-    // 1. Cek Status Lunas
-    if ($transaction->payment_status_id == 1) {
-        // UBAH PESANNYA BIAR LEBIH JELAS SOLUSINYA:
-        return back()->with('error', 'Transaksi LUNAS tidak bisa langsung dihapus demi keamanan data. Silakan ubah status menjadi "Belum Lunas" terlebih dahulu jika ingin menghapus.');
-    }
-
-    DB::beginTransaction();
-    try {
-        // 2. Load relasi anak-anaknya
-        $transaction->load(['spareParts', 'services']);
-
-        // 3. Kembalikan Stok Sparepart & Hapus Pivot Sparepart
-        foreach ($transaction->spareParts as $detail) {
-            $part = SparePart::withTrashed()->find($detail->spare_part_id);
-            if ($part) {
-                $part->increment('stock', $detail->qty);
-            }
-            // Hapus baris di tabel transaction_spare_parts
-            // Kita pakai DB query biar cepat karena ini relasi BelongsToMany
-            DB::table('transaction_spare_parts')
-                ->where('transaction_id', $transaction->id)
-                ->where('spare_part_id', $detail->id)
-                ->delete();
+    {
+        if ($transaction->payment_status_id == 1) {
+            return back()->with('error', 'Transaksi LUNAS tidak bisa langsung dihapus demi keamanan data. Silakan ubah status menjadi "Belum Lunas" terlebih dahulu jika ingin menghapus.');
         }
-        
-        // ATAU CARA LEBIH CEPAT UNTUK MENGHAPUS SEMUA PIVOT:
-        // $transaction->spareParts()->detach(); <-- Ini menghapus semua hubungan di pivot sparepart
-        // $transaction->services()->detach();   <-- Ini menghapus semua hubungan di pivot services
 
-        // Kita pakai detach() saja biar bersih dan cepat
-        $transaction->spareParts()->detach(); 
-        $transaction->services()->detach();
+        DB::beginTransaction();
+        try {
+            $transaction->load(['spareParts', 'services']);
+            
+            // Backup data untuk log sebelum dihapus
+            $logData = [
+                'trx_id' => $transaction->id,
+                'customer' => $transaction->customer->name ?? 'Unknown',
+                'total' => $transaction->total_amount,
+                'items_count' => $transaction->spareParts->count() + $transaction->services->count()
+            ];
 
-        // 4. Baru Hapus Transaksi Induk
-        $transaction->delete();
+            // 1. Kembalikan Stok Sparepart
+            foreach ($transaction->spareParts as $detail) {
+                $part = SparePart::withTrashed()->find($detail->spare_part_id);
+                if ($part) {
+                    $part->increment('stock', $detail->qty);
+                }
+            }
+            
+            // 2. Hapus Pivot
+            $transaction->spareParts()->detach();
+            $transaction->services()->detach();
 
-        DB::commit();
-        return back()->with('success', 'Transaksi dihapus dan stok dikembalikan.');
-        
-    } catch (\Exception $e) {
-        DB::rollBack();
-        return back()->with('error', 'Gagal menghapus: ' . $e->getMessage());
+            // 3. Hapus Transaksi
+            $transaction->delete();
+
+            // [CCTV] Catat Log Penghapusan
+            ActivityLog::record(
+                "Menghapus Transaksi #{$transaction->id} senilai Rp " . number_format($transaction->total_amount),
+                $logData
+            );
+
+            DB::commit();
+            return back()->with('success', 'Transaksi dihapus dan stok dikembalikan.');
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Gagal menghapus: ' . $e->getMessage());
+        }
     }
-}
-
+    /**
+     * Tampilkan detail transaksi.
+     */
     public function show(Transaction $transaction)
     {
         return redirect()->route('admin.transactions.edit', $transaction->id);

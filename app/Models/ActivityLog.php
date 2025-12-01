@@ -4,39 +4,33 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Auth;
 
 class ActivityLog extends Model
 {
     use HasFactory;
 
-    protected $table = 'activity_logs';
+    protected $guarded = ['id'];
 
-    const UPDATED_AT = null;
-
-    protected $fillable = [
-        'user_id',
-        'action',
-        'metadata',
-    ];
-
-    /**
-     * Atribut yang harus di-cast.
-     * 'metadata' di-cast sebagai array/object, membuatnya mudah dimanipulasi di Laravel.
-     */
     protected $casts = [
-        'metadata' => 'array',
+        'metadata' => 'array', // Biar kolom JSON otomatis jadi array
     ];
 
-    // =================================================================
-    // RELASI ELOQUENT
-    // =================================================================
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 
     /**
-     * Mendapatkan user yang melakukan aktivitas ini (jika tercatat).
+     * Helper sakti untuk mencatat log dengan satu baris kode.
+     * Cara pakai: ActivityLog::record('Menghapus Transaksi #10', ['trx_id' => 10]);
      */
-    public function user(): BelongsTo
+    public static function record($action, $metadata = [])
     {
-        return $this->belongsTo(User::class, 'user_id');
+        self::create([
+            'user_id' => Auth::id(), // Siapa pelakunya? (Otomatis user yang login)
+            'action' => $action,     // Apa yang dia lakukan?
+            'metadata' => $metadata, // Data tambahan (opsional)
+        ]);
     }
 }

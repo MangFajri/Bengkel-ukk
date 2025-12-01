@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\SparePartController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\VehicleController;
+use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\AdminTransactionController;
 use App\Http\Controllers\Admin\TransactionServiceController;
@@ -81,6 +82,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
     Route::post('transaction-spare-parts', [TransactionSparePartController::class, 'store'])->name('transaction-spareparts.store');
     Route::delete('transaction-spare-parts/{id}', [TransactionSparePartController::class, 'destroy'])->name('transaction-spareparts.destroy');
+    
+    // Log Aktivitas
+    Route::get('/logs', [ActivityLogController::class, 'index'])->name('logs.index');
 });
 
 

@@ -5,8 +5,9 @@ namespace App\Http\Controllers\Mechanic;
 use App\Http\Controllers\Controller;
 use App\Models\Transaction;
 use App\Models\ServiceStatus;
-use App\Models\SparePart; // Tambahkan ini
-use App\Models\TransactionSparePart; // Tambahkan ini
+use App\Models\ActivityLog;
+use App\Models\SparePart; 
+use App\Models\TransactionSparePart; 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -80,9 +81,20 @@ class JobController extends Controller
             ->where('mechanic_id', Auth::id())
             ->firstOrFail();
 
+        // Ambil nama status lama & baru untuk log
+        $oldStatus = $transaction->serviceStatus->label ?? 'Unknown'; // Pakai label
+        $newStatusModel = ServiceStatus::find($request->service_status_id);
+        $newStatus = $newStatusModel->label ?? 'Unknown';
+
         $transaction->update([
             'service_status_id' => $request->service_status_id
         ]);
+
+        // [CCTV] Log Perubahan Status
+        ActivityLog::record(
+            "Update Status Transaksi #{$id}: {$oldStatus} -> {$newStatus}",
+            ['mechanic_id' => Auth::id()]
+        );
 
         return back()->with('success', 'Status pekerjaan berhasil diperbarui!');
     }
