@@ -116,21 +116,28 @@ Route::middleware(['auth', 'role:mechanic'])->prefix('mechanic')->name('mechanic
     // Dashboard
     Route::get('/dashboard', [MechanicDashboardController::class, 'index'])->name('dashboard');
 
-    // --- PERBAIKAN/TAMBAHAN ---
-
-    // 1. Route Riwayat (Taruh SEBELUM resource biar gak ketimpa logic {job})
+    // 1. Route Riwayat
     Route::get('/jobs/history', [JobController::class, 'history'])->name('jobs.history');
 
     // 2. Route Update Status
     Route::post('/jobs/{transaction}/update-status', [JobController::class, 'updateStatus'])->name('jobs.updateStatus');
 
+    // ==========================================
+    // 👇 TAMBAHKAN INI (PENYEBAB ERROR KAMU) 👇
+    // ==========================================
+    Route::post('/jobs/{transaction}/spareparts', [JobController::class, 'storeSparePart'])
+        ->name('jobs.spareparts.store'); // <-- Ini nama yang dicari error tadi
+
+    Route::delete('/jobs/{transaction}/spareparts/{sparepart}', [JobController::class, 'destroySparePart'])
+        ->name('jobs.spareparts.destroy');
+    // ==========================================
+    
     // 3. Resource Controller (Standard CRUD)
     Route::resource('jobs', JobController::class)
         ->only(['index', 'show'])
         ->parameters(['jobs' => 'transaction']);
 
 });
-
 // =================================================================
 // GRUP RUTE UNTUK PELANGGAN (CUSTOMER)
 // =================================================================
@@ -146,15 +153,5 @@ Route::middleware(['auth', 'role:customer'])->prefix('customer')->name('customer
     Route::resource('vehicles', CustomerVehicleController::class);
 });
 
-// --- RUTE PERBAIKAN DATABASE (HAPUS SETELAH DIPAKAI) ---
-Route::get('/fix-data', function () {
-    // 1. Ubah semua transaksi jadi PAID (Lunas - ID 2)
-    \App\Models\Transaction::query()->update(['payment_status_id' => 2]);
-    
-    // 2. Ubah semua transaksi jadi DONE (Selesai - ID 4)
-    \App\Models\Transaction::query()->update(['service_status_id' => 4]);
-
-    return "Data Transaksi Berhasil Diperbaiki! Silakan cek Dashboard.";
-});
 // Rute otentikasi yang dibuat oleh Laravel Breeze
 require __DIR__.'/auth.php';

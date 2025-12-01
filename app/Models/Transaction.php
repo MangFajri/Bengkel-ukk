@@ -6,27 +6,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Transaction extends Model
 {
     use HasFactory;
 
-    protected $fillable = [
-        'customer_id',
-        'vehicle_id',
-        'mechanic_id',
-        'created_by',
-        'promo_id',
-        'payment_method_id', // Pastikan kolom ini ada di fillable
-        'service_status_id',
-        'payment_status_id',
-        'check_in_at',
-        'check_out_at',
-        'notes',
-        'total_amount',
-        'amount_paid',
-    ];
+    protected $guarded = ['id']; // Lebih fleksibel daripada fillable, aman selama controller validasi.
 
     protected $casts = [
         'check_in_at' => 'datetime',
@@ -36,17 +21,11 @@ class Transaction extends Model
     ];
 
     // =================================================================
-    // RELASI KE PARENT (BelongsTo)
+    // 1. RELASI KE PARENT (BelongsTo)
     // =================================================================
 
-    /**
-     * Relasi ke Customer (User).
-     * Menggunakan withTrashed() agar riwayat tidak error jika user dihapus.
-     */
     public function customer(): BelongsTo
     {
-        // Pastikan nama fungsi sesuai dengan yang dipanggil di Controller/View
-        // Kalau di view pakai $transaction->user->name, ganti nama fungsi ini jadi 'user'
         return $this->belongsTo(User::class, 'customer_id')->withTrashed();
     }
 
@@ -55,9 +34,6 @@ class Transaction extends Model
         return $this->belongsTo(User::class, 'mechanic_id')->withTrashed();
     }
 
-    /**
-     * Relasi ke Kendaraan.
-     */
     public function vehicle(): BelongsTo
     {
         return $this->belongsTo(Vehicle::class, 'vehicle_id')->withTrashed();
@@ -73,26 +49,48 @@ class Transaction extends Model
         return $this->belongsTo(PaymentStatus::class, 'payment_status_id');
     }
 
-    /**
-     * Relasi Payment Method (INI YANG TADI ERROR)
-     */
     public function paymentMethod(): BelongsTo
     {
         return $this->belongsTo(PaymentMethod::class, 'payment_method_id');
     }
 
     // =================================================================
-    // RELASI KE CHILD (HasMany)
+    // 2. RELASI KE CHILD (BelongsToMany - BIAR FLEKSIBEL)
     // =================================================================
 
     public function services(): BelongsToMany
     {
         return $this->belongsToMany(Service::class, 'transaction_services', 'transaction_id', 'service_id')
-            ->withPivot('id', 'qty', 'price_at_time'); // Menyertakan kolom pivot yang diperlukan
+                    ->withPivot('id', 'qty', 'price_at_time');
     }
 
-    public function spareParts(): HasMany
+    // UBAHAN PENTING: Pakai belongsToMany biar gampang ambil nama sparepart di View
+    public function spareParts(): BelongsToMany
     {
-        return $this->hasMany(TransactionSparePart::class, 'transaction_id');
+        return $this->belongsToMany(SparePart::class, 'transaction_spare_parts', 'transaction_id', 'spare_part_id')
+                    ->withPivot('id', 'qty', 'price_at_time');
+    }
+
+    // =================================================================
+    // 3. HELPER TAMBAHAN (ACCESSORS) - BIAR KODING VIEW BERSIH
+    // =================================================================
+
+    // Panggil di view: {{ $transaction->formatted_total }}
+    public function getFormattedTotalAttribute()
+    {
+        return 'Rp ' . number_format($this->total_amount, 0, ',', '.');
+    }
+
+    // Panggil di view: <span class="badge badge-{{ $transaction->status_color }}">
+    public function getStatusColorAttribute()
+    {
+        return match($this->service_status_id) {
+            1 => 'warning',   // Pending -> Kuning
+            2 => 'primary',   // Pengerjaan -> Biru
+            3 => 'info',      // Menunggu Bayar -> Biru Muda
+            4 => 'success',   // Selesai -> Hijau
+            5 => 'danger',    // Batal -> Merah
+            default => 'secondary'
+        };
     }
 }

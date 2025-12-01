@@ -334,18 +334,27 @@ class AdminTransactionController extends Controller
     /**
      * Cetak Struk Transaksi.
      */
-    public function print(Transaction $transaction)
-    {
-        // PERBAIKAN: Sama seperti edit, services jangan pakai .service
-        $transaction->load([
-            'customer' => function($q) { $q->withTrashed(); },
-            'vehicle' => function($q) { $q->withTrashed(); },
-            'mechanic' => function($q) { $q->withTrashed(); },
-            'services' => function($q) { $q->withTrashed(); }, // <--- SUDAH DIPERBAIKI
-            'spareParts.sparePart' => function($q) { $q->withTrashed(); },
-            'paymentMethod'
-        ]);
+    public function print(Transaction $transaction){
+    $transaction->load([
+        // 1. Relasi BelongsTo (Parent)
+        // Di Model Transaction.php sudah ada ->withTrashed(), jadi cukup panggil nama relasinya.
+        'customer', 
+        'vehicle', 
+        'mechanic', 
+        'paymentMethod',
 
-        return view('admin.transactions.print', compact('transaction'));
-    }
+        // 2. Relasi BelongsToMany (Child)
+        // Di Model TIDAK ADA ->withTrashed() (bagus, biar pas input data baru gak muncul yg sampah).
+        // Maka KITA WAJIB pasang withTrashed() DISINI agar di struk tetap muncul.
+        'services' => function($q) { 
+            $q->withTrashed(); 
+        },
+        
+        'spareParts' => function($q) { 
+            $q->withTrashed(); 
+        }
+    ]);
+
+    return view('admin.transactions.print', compact('transaction'));
+}
 }

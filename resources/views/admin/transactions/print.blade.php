@@ -110,27 +110,43 @@
             </tr>
         </thead>
         <tbody>
-            @foreach($transaction->services as $item)
+            {{-- BAGIAN JASA / SERVICES --}}
+            @foreach($transaction->services as $service)
             <tr>
                 <td>
-                    {{ $item->service->name ?? 'Jasa (Terhapus)' }}
+                    {{-- FIX: Langsung panggil name, karena $service adalah Model Service --}}
+                    {{ $service->name }} 
                     <div style="font-size: 10px; color: #555;">*Jasa Service</div>
                 </td>
                 <td class="text-right">1</td>
-                <td class="text-right">Rp {{ number_format($item->price_at_time ?? $item->service->price, 0, ',', '.') }}</td>
+                {{-- FIX: Ambil harga dari PIVOT (History Harga) --}}
+                <td class="text-right">
+                    Rp {{ number_format($service->pivot->price_at_time, 0, ',', '.') }}
+                </td>
             </tr>
             @endforeach
 
+            {{-- BAGIAN SPAREPARTS --}}
             @foreach($transaction->spareParts as $part)
             <tr>
                 <td>
-                    {{ $part->sparePart->name ?? 'Barang (Terhapus)' }}
+                    {{-- FIX: Langsung panggil name --}}
+                    {{ $part->name }}
                     <div style="font-size: 10px; color: #555;">*Sparepart</div>
                 </td>
-                <td class="text-right">{{ $part->qty }}</td>
-                <td class="text-right">Rp {{ number_format(($part->price_at_time ?? $part->sparePart->sell_price) * $part->qty, 0, ',', '.') }}</td>
+                {{-- FIX: Qty ada di pivot --}}
+                <td class="text-right">{{ $part->pivot->qty }}</td>
+                
+                {{-- FIX: Hitung subtotal pakai data pivot --}}
+                <td class="text-right">
+                    Rp {{ number_format($part->pivot->price_at_time * $part->pivot->qty, 0, ',', '.') }}
+                </td>
             </tr>
             @endforeach
+            
+            {{-- TAMBAHAN: TOTAL GRAND TOTAL (Opsional buat validasi manual) --}}
+            {{-- Kadang total_amount di transaction beda hitungan kalau ada diskon dsb, 
+                 tapi untuk struk ini kita ikut transaction->total_amount saja --}}
         </tbody>
     </table>
 
