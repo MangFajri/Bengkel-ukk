@@ -71,26 +71,32 @@ class UserController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateUserRequest $request, User $user)
-    {
-        $validatedData = $request->validated();
+    public function update(Request $request, User $user)
+{
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'email' => 'required|email|unique:users,email,' . $user->id,
+        'role' => 'required|in:admin,mechanic,customer',
+        // Password opsional, hanya divalidasi jika diisi
+        'password' => 'nullable|string|min:8', 
+    ]);
 
-        $validatedData['is_active'] = $request->has('is_active');
+    $data = [
+        'name' => $request->name,
+        'email' => $request->email,
+        'role' => $request->role,
+    ];
 
-        // Cek apakah admin mengisi password baru
-        if ($request->filled('password')) {
-            // Jika diisi, hash password baru
-            $validatedData['password'] = Hash::make($validatedData['password']);
-        } else {
-            // Jika tidak diisi, hapus password dari array agar tidak meng-update password lama
-            unset($validatedData['password']);
-        }
-
-        // Update data di database
-        $user->update($validatedData);
-
-        return redirect()->route('admin.users.index')->with('success', 'Data Pengguna berhasil diperbarui.');
+    // Logic Reset Password
+    if ($request->filled('password')) {
+        $data['password'] = \Illuminate\Support\Facades\Hash::make($request->password);
     }
+
+    $user->update($data);
+
+    return redirect()->route('admin.users.index')
+        ->with('success', 'Data pengguna berhasil diperbarui.');
+}
 
     /**
      * Remove the specified resource from storage.

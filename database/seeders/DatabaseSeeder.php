@@ -2,8 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -13,9 +11,15 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Panggil StatusSeeder
+        // User Seeder (Pastikan ini ada user admin, mekanik, customer defaultmu)
+        // $this->call(UserSeeder::class); 
+        
+        // Data Master Aplikasi Bengkel
         $this->call([
-            StatusSeeder::class,
+            StatusSeeder::class,         // Status Service (Pending, Proses, dll)
+            PaymentMethodSeeder::class,  // Metode Pembayaran
+            ServiceSeeder::class,        // Jasa Service (BARU)
+            SparePartSeeder::class,      // Sparepart (BARU)
         ]);
     }
 }
