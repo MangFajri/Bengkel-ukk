@@ -76,14 +76,19 @@ class SparePartController extends Controller
      */
     public function update(UpdateSparePartRequest $request, SparePart $sparePart)
     {
-        $validatedData = $request->validated();
-        $validatedData['is_active'] = $request->has('is_active');
+        // [SECURITY PATCH]
+        // Kita gunakan except() untuk mengambil semua input KECUALI 'sku'.
+        // Jadi walaupun user mengirim 'sku' baru lewat inspect element, kita abaikan.
+        $data = $request->except(['sku', '_token', '_method']);
+        
+        // Handle checkbox is_active secara manual
+        $data['is_active'] = $request->has('is_active');
 
-        // Update data di database
-        $sparePart->update($validatedData);
+        // Update data di database dengan array yang sudah dibersihkan (tanpa SKU)
+        $sparePart->update($data);
 
         // Redirect kembali ke halaman daftar dengan pesan sukses
-        return redirect()->route('admin.spare-parts.index')->with('success', 'Data Sparepart berhasil diperbarui.');
+        return redirect()->route('admin.spare-parts.index')->with('success', 'Data Sparepart diperbarui (SKU Tetap/Tidak Berubah).');
     }
 
     /**

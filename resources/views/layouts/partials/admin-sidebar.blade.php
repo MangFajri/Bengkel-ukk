@@ -7,7 +7,7 @@
             <i class="fas fa-wrench text-warning" style="font-size: 1.5rem;"></i>
         </div>
         <div class="sidebar-brand-text mx-3 text-white" style="letter-spacing: 1px;">
-            BENGKEL <span class="text-warning font-weight-bold">PRO</span>
+            BENGKEL <span class="text-warning font-weight-bold">IKI</span>
         </div>
     </a>
 

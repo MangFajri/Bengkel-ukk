@@ -59,13 +59,13 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="form-group col-md-6">
-                                <label class="text-gray-400 small font-weight-bold text-uppercase">Rencana Tanggal
-                                    Service</label>
-                                <input type="date" name="booking_date" class="form-control text-white"
-                                    value="{{ date('Y-m-d') }}" min="{{ date('Y-m-d') }}"
-                                    style="background-color: #0f172a; border: 1px solid #334155;">
-                                <small class="text-muted">*Biarkan default jika untuk hari ini</small>
+                            <div class="form-group">
+                                <label class="text-white font-weight-bold">Rencana Kedatangan (Tanggal & Jam)</label>
+                                {{-- type="datetime-local" memungkinkan user memilih Tgl + Jam sekaligus --}}
+                                <input type="datetime-local" name="booking_date"
+                                    class="form-control bg-dark text-white border-secondary" min="{{ date('Y-m-d\TH:i') }}"
+                                    {{-- Tidak boleh pilih masa lalu --}} required>
+                                <small class="text-muted">Pilih jam operasional (08:00 - 16:00)</small>
                             </div>
                         </div>
 

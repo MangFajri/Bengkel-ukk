@@ -27,7 +27,7 @@ class UpdateSparePartRequest extends FormRequest
 
         return [
             // Aturan 'unique' di sini akan mengabaikan record dengan ID saat ini
-            'sku' => ['required', 'string', 'max:100', Rule::unique('spare_parts')->ignore($sparePartId)],
+            // 'sku' => ['required', 'string', 'max:100', Rule::unique('spare_parts')->ignore($sparePartId)],
             'name' => 'required|string|max:255',
             'brand' => 'nullable|string|max:100',
             'cost_price' => 'required|numeric|min:0',

@@ -55,7 +55,8 @@ class CustomerTransactionController extends Controller
             'service_ids' => 'required|array|min:1',
             'service_ids.*' => 'exists:services,id',
             'notes' => 'nullable|string|max:500',
-            'booking_date' => 'nullable|date|after_or_equal:today',
+            // Validasi Tanggal & Jam Booking (Wajib diisi)
+            'booking_date' => 'required|date|after_or_equal:today',
         ]);
 
         try {
@@ -72,21 +73,23 @@ class CustomerTransactionController extends Controller
             // Default Payment = 3 (Belum Bayar)
             $unpaidId = 3;
 
-            // 3. Tanggal Booking
-            $bookingDate = $request->booking_date ?? now();
+            // 3. Set Tanggal
+            // Waktu Rencana Datang (Booking Slot)
+            $bookingDate = $request->booking_date; 
 
             $transaction = Transaction::create([
-                // Generate Kode Unik (Opsional, tapi bagus buat UX)
-                // 'code' => 'TRX-' . mt_rand(100000, 999999),
                 'customer_id' => Auth::id(),
                 'vehicle_id' => $request->vehicle_id,
-                'service_status_id' => $waitingStatusId, // <-- PENTING: Status Menunggu
+                'service_status_id' => $waitingStatusId, // Status Menunggu
                 'payment_status_id' => $unpaidId,
                 'payment_method_id' => null,
                 'notes' => $request->notes,
                 'total_amount' => $initialTotal,
                 'created_by' => Auth::id(),
-                'created_at' => $bookingDate,
+                
+                // [PERBAIKAN LOGIC WAKTU]
+                'check_in_at' => $bookingDate, // Waktu Rencana Service
+                'created_at' => now(),         // Waktu Klik Booking (Realtime)
             ]);
 
             // 4. Simpan Detail Services
@@ -102,11 +105,10 @@ class CustomerTransactionController extends Controller
             DB::commit();
 
             return redirect()->route('customer.transactions.index')
-                ->with('success', 'Booking berhasil dikirim! Silakan tunggu konfirmasi Admin.');
+                ->with('success', 'Booking berhasil dikirim! Silakan datang sesuai jadwal yang Anda pilih.');
 
         } catch (\Exception $e) {
             DB::rollBack();
-
             return back()->with('error', 'Gagal booking: '.$e->getMessage());
         }
     }

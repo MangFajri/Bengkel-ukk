@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\AdminTransactionController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\FrontController;
 // --- CONTROLLERS ADMIN ---
 use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\ReportController;
@@ -30,9 +31,10 @@ use Illuminate\Support\Facades\Route;
 */
 
 // Rute Halaman Utama
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', [FrontController::class, 'index'])->name('landing');
+
+// RUTE BARU UNTUK KATALOG
+Route::get('/catalog', [FrontController::class, 'catalog'])->name('catalog');
 
 // Rute Dashboard Utama (Redirect sesuai Role)
 Route::get('/dashboard', function () {
